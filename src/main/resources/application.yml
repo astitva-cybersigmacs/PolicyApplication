@@ -1,0 +1,26 @@
+server:
+  port: 8085
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://182.156.189.162:3306/sigmassistestdb
+    username: stagingserver
+    password: cyberdb@123
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    open-in-view: true
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+
+  http:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+  servlet:
+    multipart:
+      enabled: true
+      file-size-threshold: 1KB
+      max-file-size: 100MB
+      max-request-size: 100MB
