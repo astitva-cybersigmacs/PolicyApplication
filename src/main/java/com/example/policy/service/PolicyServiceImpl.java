@@ -75,4 +75,28 @@ public class PolicyServiceImpl implements PolicyService {
         policyRepository.delete(policy);
     }
 
+    @Override
+    @Transactional
+    public Policy updatePolicyTemplate(Long policyId, MultipartFile policyTemplateList, String version) {
+        Policy existingPolicy = this.policyRepository.findById(policyId)
+                .orElseThrow(() -> new RuntimeException("Policy not found with id: " + policyId));
+
+        try {
+            PolicyTemplate template = new PolicyTemplate();
+            template.setFileName(policyTemplateList.getOriginalFilename());
+            template.setFileType(policyTemplateList.getContentType());
+            template.setFile(FileUtils.compressFile(policyTemplateList.getBytes()));
+            template.setVersion(version);
+            template.setPolicy(existingPolicy);
+
+            // Clear and add new template while maintaining the policy reference
+            existingPolicy.getPolicyTemplateList().clear();
+            existingPolicy.getPolicyTemplateList().add(template);
+
+            return this.policyRepository.save(existingPolicy);
+        } catch (IOException e) {
+            throw new RuntimeException("Error processing file: " + policyTemplateList.getOriginalFilename());
+        }
+    }
+
 }

@@ -93,4 +93,28 @@ public class PolicyController {
         }
     }
 
+    @PutMapping("/template")
+    public ResponseEntity<?> updatePolicyTemplate(@RequestParam Long policyId,
+                                                  @RequestParam MultipartFile policyTemplateList,
+                                                  @RequestParam String version) {
+        if (policyTemplateList == null) {
+            return ResponseModel.customValidations("policyTemplateList", "policyTemplateList is not present");
+        }
+
+        if (!FileFormats.proposalFileFormat().contains(policyTemplateList.getContentType())) {
+            return ResponseModel.customValidations("fileFormat",
+                    "Unsupported file format: " + policyTemplateList.getContentType());
+        }
+
+        try {
+            Policy updatedPolicy = this.policyService.updatePolicyTemplate(policyId, policyTemplateList, version);
+            return ResponseModel.success("Policy template updated successfully", updatedPolicy);
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("Policy not found")) {
+                return ResponseModel.notFound(e.getMessage());
+            }
+            return ResponseModel.error("Failed to update policy template: " + e.getMessage());
+        }
+    }
+
 }
