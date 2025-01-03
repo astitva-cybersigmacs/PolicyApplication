@@ -99,4 +99,17 @@ public class PolicyServiceImpl implements PolicyService {
         }
     }
 
+    @Override
+    public byte[] downloadPolicyFile(Long policyId) {
+        Policy policy = this.policyRepository.findById(policyId)
+                .orElseThrow(() -> new RuntimeException("Policy not found with id: " + policyId));
+
+        if (policy.getPolicyTemplateList().isEmpty()) {
+            throw new RuntimeException("No template found for policy id: " + policyId);
+        }
+
+        PolicyTemplate template = policy.getPolicyTemplateList().get(0);
+        return template.getFile();
+    }
+
 }

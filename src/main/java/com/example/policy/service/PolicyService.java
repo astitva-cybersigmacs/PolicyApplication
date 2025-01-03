@@ -11,4 +11,5 @@ public interface PolicyService {
     Policy updatePolicy(Long policyId, String policyName, String description);
     void deletePolicy(Long policyId);
     Policy updatePolicyTemplate(Long policyId, MultipartFile policyTemplateList, String version);
+    byte[] downloadPolicyFile(Long policyId);
 }
