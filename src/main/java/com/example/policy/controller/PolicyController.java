@@ -7,8 +7,6 @@ import com.example.policy.utils.FileFormats;
 import com.example.policy.utils.FileUtils;
 import com.example.policy.utils.ResponseModel;
 import lombok.AllArgsConstructor;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,10 +21,10 @@ public class PolicyController {
     private PolicyService policyService;
 
     @PostMapping
-    public ResponseEntity<?> createPolicy(@RequestParam String policyName,
-                                          @RequestParam String description,
-                                          @RequestParam MultipartFile policyTemplate,
-                                          @RequestParam String version) {
+    public ResponseEntity<?> createPolicy(@RequestParam(name = "policyName") String policyName,
+                                          @RequestParam(name = "description") String description,
+                                          @RequestParam(name = "policyTemplate") MultipartFile policyTemplate,
+                                          @RequestParam(name = "version") String version) {
         if (policyTemplate == null) {
             return ResponseModel.customValidations("policyTemplateList", "policyTemplateList is not present");
         }
@@ -37,8 +35,8 @@ public class PolicyController {
                     "Unsupported file format: " + policyTemplate.getContentType());
         }
         try {
-            Policy createdPolicy = this.policyService.createPolicy(policyName, description, policyTemplate, version); // Pass version to service
-            return ResponseModel.success("Policy created successfully", createdPolicy);
+            this.policyService.createPolicy(policyName, description, policyTemplate, version); // Pass version to service
+            return ResponseModel.success("Policy created successfully");
         } catch (Exception e) {
             return ResponseModel.error("Failed to create policy: " + e.getMessage());
         }
@@ -105,8 +103,8 @@ public class PolicyController {
         }
 
         try {
-            Policy updatedPolicy = this.policyService.updatePolicyTemplate(policyId, policyTemplate, version);
-            return ResponseModel.success("Policy template updated successfully", updatedPolicy);
+             this.policyService.updatePolicyTemplate(policyId, policyTemplate, version);
+             return ResponseModel.success("Policy template updated successfully");
         } catch (RuntimeException e) {
             if (e.getMessage().contains("Policy not found")) {
                 return ResponseModel.notFound(e.getMessage());

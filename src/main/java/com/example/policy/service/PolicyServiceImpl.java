@@ -89,7 +89,7 @@ public class PolicyServiceImpl implements PolicyService {
             template.setPolicy(existingPolicy);
 
             // Clear and add new template while maintaining the policy reference
-            existingPolicy.getPolicyTemplateList().clear();
+//            existingPolicy.getPolicyTemplateList().clear();
             existingPolicy.getPolicyTemplateList().add(template);
 
             return this.policyRepository.save(existingPolicy);

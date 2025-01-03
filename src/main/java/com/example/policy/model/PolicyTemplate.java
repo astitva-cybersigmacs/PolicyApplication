@@ -30,7 +30,7 @@ public class PolicyTemplate {
 
     private String version;
 
-    @ManyToOne(cascade = CascadeType.PERSIST)
+    @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "policy_id")
     @JsonIgnore
     private Policy policy;
