@@ -1,6 +1,5 @@
 package com.example.policy.model;
 
-import com.example.policy.utils.Tracker;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

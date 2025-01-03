@@ -1,14 +1,11 @@
 package com.example.policy.model;
 
-import com.example.policy.utils.Tracker;
-import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.Date;
 import java.util.List;
 
 @AllArgsConstructor
