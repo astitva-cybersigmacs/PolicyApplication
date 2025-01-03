@@ -22,8 +22,16 @@ public class Policy {
 
     private String policyName;
     private String description;
+    private boolean status;
 
     @OneToMany(mappedBy = "policy", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PolicyTemplate> policyTemplateList;
+
+    @OneToMany(mappedBy = "policy", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PolicyFiles> policyFilesList;
+
+    @OneToMany(mappedBy = "policy", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PolicyMembers> policyMembersList;
+
 
 }
