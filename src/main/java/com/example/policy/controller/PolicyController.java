@@ -115,21 +115,19 @@ public class PolicyController {
         }
     }
 
-    @GetMapping("/download/{policyId}")
-    public ResponseEntity<?> downloadPolicyFile(@PathVariable Long policyId) {
+    @GetMapping("/download/template/{templateId}")
+    public ResponseEntity<?> downloadPolicyFile(@PathVariable Long templateId) {
         try {
-            Policy policy = policyService.getPolicyById(policyId);
-            if (policy == null || policy.getPolicyTemplateList().isEmpty()) {
-                return ResponseModel.notFound("Policy or template not found");
+            PolicyTemplate template = policyService.getPolicyTemplateById(templateId);
+            if (template == null) {
+                return ResponseModel.notFound("Policy template not found with ID: " + templateId);
             }
 
-            PolicyTemplate template = policy.getPolicyTemplateList().get(0);
             byte[] decompressedFile = FileUtils.decompressFile(template.getFile());
-
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(template.getFileType()))
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + template.getFileName() + "\"")
-                    .body(decompressedFile);
+            return ResponseModel.mediaFile(
+                    template.getFileType(),
+                    decompressedFile
+            );
         } catch (Exception e) {
             return ResponseModel.error("Error downloading file: " + e.getMessage());
         }

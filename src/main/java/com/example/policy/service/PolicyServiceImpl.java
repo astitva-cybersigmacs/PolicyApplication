@@ -3,6 +3,7 @@ package com.example.policy.service;
 import com.example.policy.model.Policy;
 import com.example.policy.model.PolicyTemplate;
 import com.example.policy.repository.PolicyRepository;
+import com.example.policy.repository.PolicyTemplateRepository;
 import com.example.policy.utils.FileUtils;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
@@ -18,6 +19,7 @@ import java.util.List;
 public class PolicyServiceImpl implements PolicyService {
 
     private PolicyRepository policyRepository;
+    private PolicyTemplateRepository policyTemplateRepository;
 
 
     @Override
@@ -97,16 +99,8 @@ public class PolicyServiceImpl implements PolicyService {
     }
 
     @Override
-    public byte[] downloadPolicyFile(Long policyId) {
-        Policy policy = this.policyRepository.findById(policyId)
-                .orElseThrow(() -> new RuntimeException("Policy not found with id: " + policyId));
-
-        if (policy.getPolicyTemplateList().isEmpty()) {
-            throw new RuntimeException("No template found for policy id: " + policyId);
-        }
-
-        PolicyTemplate template = policy.getPolicyTemplateList().get(0);
-        return template.getFile();
+    public PolicyTemplate getPolicyTemplateById(Long templateId) {
+        return policyTemplateRepository.findById(templateId).orElse(null);
     }
 
 }
