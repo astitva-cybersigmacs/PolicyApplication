@@ -54,8 +54,7 @@ public class PolicyServiceImpl implements PolicyService {
     @Transactional
     public Policy updatePolicy(Long policyId, String policyName, String description) {
         // Find existing policy or throw exception
-        Policy existingPolicy = this.policyRepository.findById(policyId)
-                .orElseThrow(() -> new RuntimeException("Policy not found with id: " + policyId));
+        Policy existingPolicy = this.policyRepository.findById(policyId).orElse(null);
 
         // Update basic fields
         existingPolicy.setPolicyName(policyName);
@@ -69,9 +68,7 @@ public class PolicyServiceImpl implements PolicyService {
     @Override
     @Transactional
     public void deletePolicy(Long policyId) {
-        Policy policy = policyRepository.findById(policyId)
-                .orElseThrow(() -> new RuntimeException("Policy not found with id: " + policyId));
-
+        Policy policy = policyRepository.findById(policyId).orElse(null);
         policyRepository.delete(policy);
     }
 

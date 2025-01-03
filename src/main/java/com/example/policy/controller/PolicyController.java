@@ -25,19 +25,19 @@ public class PolicyController {
     @PostMapping
     public ResponseEntity<?> createPolicy(@RequestParam String policyName,
                                           @RequestParam String description,
-                                          @RequestParam MultipartFile policyTemplateList,
+                                          @RequestParam MultipartFile policyTemplate,
                                           @RequestParam String version) {
-        if (policyTemplateList == null) {
+        if (policyTemplate == null) {
             return ResponseModel.customValidations("policyTemplateList", "policyTemplateList is not present");
         }
 
         // Validate file format
-        if (!FileFormats.proposalFileFormat().contains(policyTemplateList.getContentType())) {
+        if (!FileFormats.proposalFileFormat().contains(policyTemplate.getContentType())) {
             return ResponseModel.customValidations("fileFormat",
-                    "Unsupported file format: " + policyTemplateList.getContentType());
+                    "Unsupported file format: " + policyTemplate.getContentType());
         }
         try {
-            Policy createdPolicy = this.policyService.createPolicy(policyName, description, policyTemplateList, version); // Pass version to service
+            Policy createdPolicy = this.policyService.createPolicy(policyName, description, policyTemplate, version); // Pass version to service
             return ResponseModel.success("Policy created successfully", createdPolicy);
         } catch (Exception e) {
             return ResponseModel.error("Failed to create policy: " + e.getMessage());
@@ -48,7 +48,7 @@ public class PolicyController {
     public ResponseEntity<?> getPolicyById(@PathVariable Long policyId) {
         Policy policy = this.policyService.getPolicyById(policyId);
         if (policy == null) {
-            return ResponseModel.notFound("Policy with ID " + policyId + " not found");
+            return ResponseModel.notFound("Policy not found");
         }
         return ResponseModel.success("Policy retrieved successfully", policy);
     }
@@ -60,10 +60,6 @@ public class PolicyController {
         // Validate input parameters
         if (policyName == null || policyName.trim().isEmpty()) {
             return ResponseModel.customValidations("policyName", "Policy name cannot be empty");
-        }
-
-        if (description == null || description.trim().isEmpty()) {
-            return ResponseModel.customValidations("description", "Description cannot be empty");
         }
 
         try {
@@ -97,19 +93,19 @@ public class PolicyController {
 
     @PutMapping("/template")
     public ResponseEntity<?> updatePolicyTemplate(@RequestParam Long policyId,
-                                                  @RequestParam MultipartFile policyTemplateList,
+                                                  @RequestParam MultipartFile policyTemplate,
                                                   @RequestParam String version) {
-        if (policyTemplateList == null) {
+        if (policyTemplate == null) {
             return ResponseModel.customValidations("policyTemplateList", "policyTemplateList is not present");
         }
 
-        if (!FileFormats.proposalFileFormat().contains(policyTemplateList.getContentType())) {
+        if (!FileFormats.proposalFileFormat().contains(policyTemplate.getContentType())) {
             return ResponseModel.customValidations("fileFormat",
-                    "Unsupported file format: " + policyTemplateList.getContentType());
+                    "Unsupported file format: " + policyTemplate.getContentType());
         }
 
         try {
-            Policy updatedPolicy = this.policyService.updatePolicyTemplate(policyId, policyTemplateList, version);
+            Policy updatedPolicy = this.policyService.updatePolicyTemplate(policyId, policyTemplate, version);
             return ResponseModel.success("Policy template updated successfully", updatedPolicy);
         } catch (RuntimeException e) {
             if (e.getMessage().contains("Policy not found")) {
@@ -124,7 +120,7 @@ public class PolicyController {
         try {
             Policy policy = policyService.getPolicyById(policyId);
             if (policy == null || policy.getPolicyTemplateList().isEmpty()) {
-                return ResponseModel.notFound("Policy or template not found for ID: " + policyId);
+                return ResponseModel.notFound("Policy or template not found");
             }
 
             PolicyTemplate template = policy.getPolicyTemplateList().get(0);
