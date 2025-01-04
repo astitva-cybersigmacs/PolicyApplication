@@ -59,9 +59,9 @@ public class PolicyFiles {
     @JsonIgnore
     private Policy policy;
 
-    @OneToMany(mappedBy = "policy_files_id", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "policyFiles", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PolicyReviewer> policyReviewerList ;
 
-    @OneToMany(mappedBy = "policy_files_id", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "policyFiles", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PolicyApprover> policyApproverList;
 }

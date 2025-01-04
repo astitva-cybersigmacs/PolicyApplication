@@ -1,9 +1,7 @@
 package com.example.policy.service;
 
-import com.example.policy.model.Policy;
-import com.example.policy.model.PolicyTemplate;
-import com.example.policy.repository.PolicyRepository;
-import com.example.policy.repository.PolicyTemplateRepository;
+import com.example.policy.model.*;
+import com.example.policy.repository.*;
 import com.example.policy.utils.FileUtils;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
@@ -12,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 @Service
@@ -20,17 +19,23 @@ public class PolicyServiceImpl implements PolicyService {
 
     private PolicyRepository policyRepository;
     private PolicyTemplateRepository policyTemplateRepository;
+    private PolicyReviewerRepository policyReviewerRepository;
+    private PolicyMembersRepository policyMembersRepository;
+    private PolicyFilesRepository policyFilesRepository;
+    private UserRepository userRepository;
 
 
     @Override
-    public Policy createPolicy(String policyName, String description, MultipartFile policyTemplateList, String version) { // Added version parameter
+    @Transactional
+    public Policy createPolicy(String policyName, String description, MultipartFile policyTemplateList, String version) {
         Policy policy = new Policy();
         policy.setPolicyName(policyName);
         policy.setDescription(description);
-        List<PolicyTemplate> templates = new ArrayList<>();
+        policy.setStatus(false); // You can modify this based on your requirements
 
+        // Create and save policy template
+        List<PolicyTemplate> templates = new ArrayList<>();
         try {
-            // Handling single file upload
             PolicyTemplate template = new PolicyTemplate();
             template.setFileName(policyTemplateList.getOriginalFilename());
             template.setFileType(policyTemplateList.getContentType());
@@ -41,9 +46,58 @@ public class PolicyServiceImpl implements PolicyService {
         } catch (IOException e) {
             throw new RuntimeException("Error processing file: " + policyTemplateList.getOriginalFilename());
         }
-
         policy.setPolicyTemplateList(templates);
-        return this.policyRepository.save(policy);
+
+        // Create PolicyFiles
+        PolicyFiles policyFiles = new PolicyFiles();
+        policyFiles.setPolicyFileName(policyName + " File");
+        policyFiles.setPolicyVersion(version);
+        policyFiles.setCreatedDate(new Date());
+        policyFiles.setPolicy(policy);
+
+        List<PolicyFiles> policyFilesList = new ArrayList<>();
+        policyFilesList.add(policyFiles);
+        policy.setPolicyFilesList(policyFilesList);
+
+        // Create PolicyMembers list
+        List<PolicyMembers> policyMembersList = new ArrayList<>();
+        policy.setPolicyMembersList(policyMembersList);
+
+        // Save policy first to get the ID
+        Policy savedPolicy = this.policyRepository.save(policy);
+
+        return savedPolicy;
+    }
+
+    @Transactional
+    public PolicyMembers addPolicyMember(Long policyId, Long userId, PolicyRole role) {
+        Policy policy = this.policyRepository.findById(policyId)
+                .orElseThrow(() -> new RuntimeException("Policy not found"));
+        User user = this.userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        PolicyMembers policyMember = new PolicyMembers();
+        policyMember.setPolicy(policy);
+        policyMember.setUser(user);
+        policyMember.setRole(role);
+
+        // If the role is REVIEWER, create a PolicyReviewer record
+        if (role == PolicyRole.REVIEWER) {
+            // Get the latest policy file
+            if (policy.getPolicyFilesList() != null && !policy.getPolicyFilesList().isEmpty()) {
+                PolicyFiles latestPolicyFile = policy.getPolicyFilesList()
+                        .get(policy.getPolicyFilesList().size() - 1);
+
+                PolicyReviewer reviewer = new PolicyReviewer();
+                reviewer.setUserId(userId);
+                reviewer.setAccepted(false); // default value
+                reviewer.setPolicyFiles(latestPolicyFile);
+                policyReviewerRepository.save(reviewer);
+            }
+        }
+
+        policy.getPolicyMembersList().add(policyMember);
+        return policyMembersRepository.save(policyMember);
     }
 
 
@@ -101,6 +155,41 @@ public class PolicyServiceImpl implements PolicyService {
     @Override
     public PolicyTemplate getPolicyTemplateById(Long templateId) {
         return policyTemplateRepository.findById(templateId).orElse(null);
+    }
+
+    @Override
+    @Transactional
+    public PolicyReviewer updatePolicyReviewer(Long userId, boolean isAccepted, String rejectedReason) {
+        List<PolicyReviewer> reviewers = this.policyReviewerRepository.findAllByUserId(userId);
+        if (reviewers.isEmpty()) {
+            throw new RuntimeException("No reviewers found for user ID: " + userId);
+        }
+
+        // Get the most recent reviewer (assuming it's the last one in the list)
+        PolicyReviewer reviewer = reviewers.get(reviewers.size() - 1);
+
+        reviewer.setAccepted(isAccepted);
+        reviewer.setRejectedReason(rejectedReason);
+        PolicyReviewer updatedReviewer = this.policyReviewerRepository.save(reviewer);
+
+        // Update the policy files final acceptance status
+        PolicyFiles policyFiles = reviewer.getPolicyFiles();
+        List<PolicyMembers> reviewerMembers = this.policyMembersRepository
+                .findByPolicyAndRole(policyFiles.getPolicy(), PolicyRole.REVIEWER);
+
+        if (!reviewerMembers.isEmpty()) {
+            long acceptedCount = this.policyReviewerRepository
+                    .findByPolicyFiles(policyFiles)
+                    .stream()
+                    .filter(PolicyReviewer::isAccepted)
+                    .count();
+
+            double acceptancePercentage = (acceptedCount * 100.0) / reviewerMembers.size();
+            policyFiles.setFinalAcceptance(acceptancePercentage > 50);
+            this.policyFilesRepository.save(policyFiles);
+        }
+
+        return updatedReviewer;
     }
 
 }

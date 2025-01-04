@@ -1,6 +1,8 @@
 package com.example.policy.controller;
 
 import com.example.policy.model.Policy;
+import com.example.policy.model.PolicyReviewer;
+import com.example.policy.model.PolicyRole;
 import com.example.policy.model.PolicyTemplate;
 import com.example.policy.service.PolicyService;
 import com.example.policy.utils.FileFormats;
@@ -128,6 +130,38 @@ public class PolicyController {
             );
         } catch (Exception e) {
             return ResponseModel.error("Error downloading file: " + e.getMessage());
+        }
+    }
+
+    @PutMapping("/reviewer-decision")
+    public ResponseEntity<?> updatePolicyReviewer(
+            @RequestParam Long userId,
+            @RequestParam boolean isAccepted,
+            @RequestParam(required = false) String rejectedReason) {
+
+        if (!isAccepted && (rejectedReason == null || rejectedReason.trim().isEmpty())) {
+            return ResponseModel.customValidations("rejectedReason", "Reason is required when rejecting");
+        }
+
+        try {
+            PolicyReviewer updatedReviewer = this.policyService.updatePolicyReviewer(
+                    userId, isAccepted, rejectedReason);
+            return ResponseModel.success("Policy review updated successfully", updatedReviewer);
+        } catch (RuntimeException e) {
+            return ResponseModel.error("Failed to update policy review: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/members")
+    public ResponseEntity<?> addPolicyMember(
+            @RequestParam Long policyId,
+            @RequestParam Long userId,
+            @RequestParam PolicyRole role) {
+        try {
+            this.policyService.addPolicyMember(policyId, userId, role);
+            return ResponseModel.success("Policy member added successfully");
+        } catch (Exception e) {
+            return ResponseModel.error("Failed to add policy member: " + e.getMessage());
         }
     }
 

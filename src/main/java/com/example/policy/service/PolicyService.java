@@ -1,7 +1,6 @@
 package com.example.policy.service;
 
-import com.example.policy.model.Policy;
-import com.example.policy.model.PolicyTemplate;
+import com.example.policy.model.*;
 import org.springframework.web.multipart.MultipartFile;
 
 
@@ -12,4 +11,6 @@ public interface PolicyService {
     void deletePolicy(Long policyId);
     Policy updatePolicyTemplate(Long policyId, MultipartFile policyTemplateList, String version);
     PolicyTemplate getPolicyTemplateById(Long templateId);
+    PolicyReviewer updatePolicyReviewer(Long userId, boolean isAccepted, String rejectedReason);
+    PolicyMembers addPolicyMember(Long policyId, Long userId, PolicyRole role);
 }
