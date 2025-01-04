@@ -1,10 +1,13 @@
 package com.example.policy.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.util.List;
 
 
 @Getter
@@ -31,4 +34,7 @@ public class User {
     private String email;
 
     private String phoneNo;
+
+    @OneToMany(mappedBy = "user")
+    private List<PolicyMembers> policyMembers;
 }

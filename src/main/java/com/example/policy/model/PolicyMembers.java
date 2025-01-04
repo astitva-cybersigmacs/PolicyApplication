@@ -27,7 +27,8 @@ public class PolicyMembers {
     @JsonIgnore
     private Policy policy;
 
-    @OneToOne(cascade = CascadeType.ALL)
+    @ManyToOne
     @JoinColumn(name = "user_id")
+    @JsonIgnore
     private User user;
 }

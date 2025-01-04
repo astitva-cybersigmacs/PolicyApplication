@@ -92,12 +92,12 @@ public class PolicyServiceImpl implements PolicyService {
                 reviewer.setUserId(userId);
                 reviewer.setAccepted(false); // default value
                 reviewer.setPolicyFiles(latestPolicyFile);
-                policyReviewerRepository.save(reviewer);
+                this.policyReviewerRepository.save(reviewer);
             }
         }
 
         policy.getPolicyMembersList().add(policyMember);
-        return policyMembersRepository.save(policyMember);
+        return this.policyMembersRepository.save(policyMember);
     }
 
 
@@ -124,8 +124,8 @@ public class PolicyServiceImpl implements PolicyService {
     @Override
     @Transactional
     public void deletePolicy(Long policyId) {
-        Policy policy = policyRepository.findById(policyId).orElse(null);
-        policyRepository.delete(policy);
+        Policy policy = this.policyRepository.findById(policyId).orElse(null);
+        this.policyRepository.delete(policy);
     }
 
     @Override
@@ -142,8 +142,6 @@ public class PolicyServiceImpl implements PolicyService {
             template.setVersion(version);
             template.setPolicy(existingPolicy);
 
-            // Clear and add new template while maintaining the policy reference
-//            existingPolicy.getPolicyTemplateList().clear();
             existingPolicy.getPolicyTemplateList().add(template);
 
             return this.policyRepository.save(existingPolicy);
@@ -154,7 +152,7 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     public PolicyTemplate getPolicyTemplateById(Long templateId) {
-        return policyTemplateRepository.findById(templateId).orElse(null);
+        return this.policyTemplateRepository.findById(templateId).orElse(null);
     }
 
     @Override
