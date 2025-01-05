@@ -23,7 +23,6 @@ public class PolicyApprover {
 
     private String rejectedReason;
 
-    private boolean finalApproval;
     private boolean isApproved;
 
     @ManyToOne(cascade = CascadeType.ALL)

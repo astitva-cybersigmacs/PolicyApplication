@@ -23,6 +23,7 @@ public class PolicyServiceImpl implements PolicyService {
     private PolicyMembersRepository policyMembersRepository;
     private PolicyFilesRepository policyFilesRepository;
     private UserRepository userRepository;
+    private PolicyApproverRepository policyApproverRepository;
 
 
     @Override
@@ -93,6 +94,20 @@ public class PolicyServiceImpl implements PolicyService {
                 reviewer.setAccepted(false); // default value
                 reviewer.setPolicyFiles(latestPolicyFile);
                 this.policyReviewerRepository.save(reviewer);
+            }
+        }
+
+        if (role == PolicyRole.APPROVER) {
+            // Get the latest policy file
+            if (policy.getPolicyFilesList() != null && !policy.getPolicyFilesList().isEmpty()) {
+                PolicyFiles latestPolicyFile = policy.getPolicyFilesList()
+                        .get(policy.getPolicyFilesList().size() - 1);
+
+                PolicyApprover approver = new PolicyApprover();
+                approver.setUserId(userId);
+                approver.setApproved(false); // default value
+                approver.setPolicyFiles(latestPolicyFile);
+                this.policyApproverRepository.save(approver);
             }
         }
 
@@ -188,6 +203,43 @@ public class PolicyServiceImpl implements PolicyService {
         }
 
         return updatedReviewer;
+    }
+
+    @Override
+    @Transactional
+    public PolicyApprover updatePolicyApprover(Long userId, boolean isApproved, String rejectedReason) {
+        // First, find all approvers for this user (similar to reviewer logic)
+        List<PolicyApprover> approvers = this.policyApproverRepository.findAllByUserId(userId);
+        if (approvers.isEmpty()) {
+            throw new RuntimeException("No approvers found for user ID: " + userId);
+        }
+
+        // Get the most recent approver (assuming it's the last one in the list)
+        PolicyApprover approver = approvers.get(approvers.size() - 1);
+
+        // Update approver's decision
+        approver.setApproved(isApproved);
+        approver.setRejectedReason(rejectedReason);
+        PolicyApprover updatedApprover = this.policyApproverRepository.save(approver);
+
+        // Update the policy files final approval status
+        PolicyFiles policyFiles = approver.getPolicyFiles();
+        List<PolicyMembers> approverMembers = this.policyMembersRepository
+                .findByPolicyAndRole(policyFiles.getPolicy(), PolicyRole.APPROVER);
+
+        if (!approverMembers.isEmpty()) {
+            // Check if any approver has rejected
+            boolean hasRejection = this.policyApproverRepository
+                    .findByPolicyFiles(policyFiles)
+                    .stream()
+                    .anyMatch(a -> !a.isApproved());
+
+            // If any approver rejected, set finalApproval to false
+            policyFiles.setFinalAcceptance(!hasRejection);
+            this.policyFilesRepository.save(policyFiles);
+        }
+
+        return updatedApprover;
     }
 
 }

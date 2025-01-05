@@ -1,9 +1,6 @@
 package com.example.policy.controller;
 
-import com.example.policy.model.Policy;
-import com.example.policy.model.PolicyReviewer;
-import com.example.policy.model.PolicyRole;
-import com.example.policy.model.PolicyTemplate;
+import com.example.policy.model.*;
 import com.example.policy.service.PolicyService;
 import com.example.policy.utils.FileFormats;
 import com.example.policy.utils.FileUtils;
@@ -162,6 +159,25 @@ public class PolicyController {
             return ResponseModel.success("Policy member added successfully");
         } catch (Exception e) {
             return ResponseModel.error("Failed to add policy member: " + e.getMessage());
+        }
+    }
+
+    @PutMapping("/approver-decision")
+    public ResponseEntity<?> updatePolicyApprover(
+            @RequestParam Long userId,
+            @RequestParam boolean isApproved,
+            @RequestParam(required = false) String rejectedReason) {
+
+        if (!isApproved && (rejectedReason == null || rejectedReason.trim().isEmpty())) {
+            return ResponseModel.customValidations("rejectedReason", "Reason is required when rejecting");
+        }
+
+        try {
+            PolicyApprover updatedApprover = this.policyService.updatePolicyApprover(
+                    userId, isApproved, rejectedReason);
+            return ResponseModel.success("Policy approval updated successfully", updatedApprover);
+        } catch (RuntimeException e) {
+            return ResponseModel.error("Failed to update policy approval: " + e.getMessage());
         }
     }
 

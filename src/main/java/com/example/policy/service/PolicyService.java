@@ -13,4 +13,5 @@ public interface PolicyService {
     PolicyTemplate getPolicyTemplateById(Long templateId);
     PolicyReviewer updatePolicyReviewer(Long userId, boolean isAccepted, String rejectedReason);
     PolicyMembers addPolicyMember(Long policyId, Long userId, PolicyRole role);
+    PolicyApprover updatePolicyApprover(Long userId, boolean isApproved, String rejectedReason);
 }
