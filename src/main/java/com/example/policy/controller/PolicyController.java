@@ -1,7 +1,6 @@
 package com.example.policy.controller;
 
 import com.example.policy.model.*;
-import com.example.policy.repository.PolicyApproverRepository;
 import com.example.policy.repository.PolicyMembersRepository;
 import com.example.policy.service.PolicyService;
 import com.example.policy.utils.FileFormats;
@@ -22,13 +21,12 @@ import java.util.List;
 public class PolicyController {
 
     private PolicyService policyService;
-    private PolicyApproverRepository policyApproverRepository;
     private PolicyMembersRepository policyMembersRepository;
 
     @PostMapping
     public ResponseEntity<?> createPolicy(@RequestParam(name = "policyName") String policyName,
                                           @RequestParam(name = "description") String description,
-                                          @RequestParam(name = "policyTemplate") MultipartFile policyTemplate,
+                                          @RequestParam(name = "policyTemplate", required = false) MultipartFile policyTemplate,
                                           @RequestParam(name = "version") String version) {
         if (policyTemplate == null) {
             return ResponseModel.customValidations("policyTemplateList", "policyTemplateList is not present");
@@ -56,43 +54,6 @@ public class PolicyController {
         return ResponseModel.success("Policy retrieved successfully", policy);
     }
 
-    @PutMapping
-    public ResponseEntity<?> updatePolicy(@RequestParam Long policyId,
-                                          @RequestParam String policyName,
-                                          @RequestParam String description) {
-        // Validate input parameters
-        if (policyName == null || policyName.trim().isEmpty()) {
-            return ResponseModel.customValidations("policyName", "Policy name cannot be empty");
-        }
-
-        try {
-            Policy updatedPolicy = this.policyService.updatePolicy(policyId, policyName, description);
-            return ResponseModel.success("Policy updated successfully", updatedPolicy);
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("Policy not found")) {
-                return ResponseModel.notFound(e.getMessage());
-            }
-            return ResponseModel.error("Failed to update policy: " + e.getMessage());
-        }
-    }
-
-
-    @DeleteMapping
-    public ResponseEntity<?> deletePolicy(@RequestParam Long policyId) {
-        if (policyId == null) {
-            return ResponseModel.customValidations("policyId", "Policy ID cannot be null");
-        }
-        try {
-            this.policyService.deletePolicy(policyId);
-            return ResponseModel.success("Policy deleted successfully");
-        } catch (RuntimeException e) {
-            // Check if the error is about the policy not being found
-            if (e.getMessage().contains("Policy not found")) {
-                return ResponseModel.notFound(e.getMessage());
-            }
-            return ResponseModel.error("Failed to delete policy: " + e.getMessage());
-        }
-    }
 
     @PutMapping("/template")
     public ResponseEntity<?> updatePolicyTemplate(@RequestParam Long policyId,
@@ -149,13 +110,13 @@ public class PolicyController {
 
         try {
             // First check if policy exists
-            Policy policy = policyService.getPolicyById(policyId);
+            Policy policy = this.policyService.getPolicyById(policyId);
             if (policy == null) {
                 return ResponseModel.error("Policy not found with ID: " + policyId);
             }
 
             // Check if user is a reviewer for this policy
-            List<PolicyMembers> policyMembers = policyMembersRepository.findByPolicyAndRole(policy, PolicyRole.REVIEWER);
+            List<PolicyMembers> policyMembers = this.policyMembersRepository.findByPolicyAndRole(policy, PolicyRole.REVIEWER);
             boolean isReviewer = policyMembers.stream()
                     .anyMatch(member -> member.getUser().getUserId()==(userId));
 
@@ -163,7 +124,7 @@ public class PolicyController {
                 return ResponseModel.error("User is not authorized as a reviewer for this policy");
             }
 
-            PolicyReviewer updatedReviewer = this.policyService.updatePolicyReviewer(
+            PolicyApproverAndReviewer updatedReviewer = this.policyService.updatePolicyReviewer(
                     policyId, userId, isAccepted, rejectedReason);
             return ResponseModel.success("Policy review updated successfully", updatedReviewer);
         } catch (RuntimeException e) {
@@ -211,7 +172,7 @@ public class PolicyController {
                 return ResponseModel.error("User is not authorized as an approver for this policy");
             }
 
-            PolicyApprover updatedApprover = this.policyService.updatePolicyApprover(
+            PolicyApproverAndReviewer updatedApprover = this.policyService.updatePolicyApprover(
                     policyId, userId, isApproved, rejectedReason);
             return ResponseModel.success("Policy approval updated successfully", updatedApprover);
         } catch (RuntimeException e) {
@@ -229,6 +190,35 @@ public class PolicyController {
             return ResponseModel.success("Policies retrieved successfully", policies);
         } catch (Exception e) {
             return ResponseModel.error("Failed to retrieve policies: " + e.getMessage());
+        }
+    }
+
+    @PutMapping("/files")
+    public ResponseEntity<?> updatePolicyFiles(
+            @RequestParam Long policyId,
+            @RequestParam String policyFileName,
+            @RequestParam MultipartFile file,
+            @RequestParam String version) {
+
+        if (file == null) {
+            return ResponseModel.customValidations("file", "File is required");
+        }
+
+        // Validate file format
+        if (!FileFormats.proposalFileFormat().contains(file.getContentType())) {
+            return ResponseModel.customValidations("fileFormat",
+                    "Unsupported file format: " + file.getContentType());
+        }
+
+        try {
+            PolicyFiles updatedPolicyFiles = this.policyService.updatePolicyFiles(
+                    policyId, policyFileName, file, version);
+            return ResponseModel.success("Policy files updated successfully", updatedPolicyFiles);
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("Policy not found")) {
+                return ResponseModel.notFound(e.getMessage());
+            }
+            return ResponseModel.error("Failed to update policy files: " + e.getMessage());
         }
     }
 

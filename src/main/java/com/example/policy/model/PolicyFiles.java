@@ -31,9 +31,7 @@ public class PolicyFiles {
     @Lob
     @Column(columnDefinition = "LONGBLOB")
     private byte[] file;
-
     private String fileName;
-
     private String fileType;
 
     private boolean finalAcceptance;
@@ -61,8 +59,5 @@ public class PolicyFiles {
     private Policy policy;
 
     @OneToMany(mappedBy = "policyFiles", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<PolicyReviewer> policyReviewerList ;
-
-    @OneToMany(mappedBy = "policyFiles", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<PolicyApprover> policyApproverList;
+    private List<PolicyApproverAndReviewer> policyApproverAndReviewerList;
 }

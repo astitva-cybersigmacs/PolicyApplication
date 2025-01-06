@@ -12,18 +12,21 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-public class PolicyApprover {
+public class PolicyApproverAndReviewer {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "policy_approver_id")
-    private long policyApproverId;
+    @Column(name = "policy_approver_and_reviewer_id")
+    private long policyApproverAndReviewerId;
 
     private long userId;
 
-    private String rejectedReason;
+    @Enumerated(EnumType.STRING)
+    private PolicyRole role;
 
     private boolean isApproved;
+    private String rejectedReason;
+
 
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "policy_files_id")
