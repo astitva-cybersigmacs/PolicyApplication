@@ -152,26 +152,11 @@ public class PolicyServiceImpl implements PolicyService {
     @Transactional
     public PolicyApproverAndReviewer updatePolicyReviewer(Long policyId, Long userId, boolean isAccepted, String rejectedReason) {
         // First validate if policy exists
-        Policy policy = this.policyRepository.findById(policyId)
-                .orElseThrow(() -> new RuntimeException("Policy not found with ID: " + policyId));
+        this.policyRepository.findById(policyId).orElseThrow(() -> new RuntimeException("Policy not found with ID: " + policyId));
 
         // Find reviewer for this user and policy
         List<PolicyApproverAndReviewer> reviewers = this.policyApproverAndReviewerRepository
                 .findByUserIdAndPolicyFiles_Policy_PolicyId(userId, policyId);
-
-        if (reviewers.isEmpty()) {
-            // If no reviewer record exists but user is a valid reviewer member, create one
-            PolicyFiles latestPolicyFile = policy.getPolicyFilesList()
-                    .get(policy.getPolicyFilesList().size() - 1);
-
-            PolicyApproverAndReviewer newReviewer = new PolicyApproverAndReviewer();
-            newReviewer.setUserId(userId);
-            newReviewer.setRole(PolicyRole.REVIEWER);
-            newReviewer.setApproved(isAccepted);
-            newReviewer.setRejectedReason(rejectedReason);
-            newReviewer.setPolicyFiles(latestPolicyFile);
-            return this.policyApproverAndReviewerRepository.save(newReviewer);
-        }
 
         // Get the most recent reviewer
         PolicyApproverAndReviewer reviewer = reviewers.get(reviewers.size() - 1);
@@ -203,24 +188,11 @@ public class PolicyServiceImpl implements PolicyService {
     @Transactional
     public PolicyApproverAndReviewer updatePolicyApprover(Long policyId, Long userId, boolean isApproved, String rejectedReason) {
         // First validate if policy exists
-        Policy policy = this.policyRepository.findById(policyId)
-                .orElseThrow(() -> new RuntimeException("Policy not found with ID: " + policyId));
+        this.policyRepository.findById(policyId).orElseThrow(() -> new RuntimeException("Policy not found with ID: " + policyId));
 
 
         // Find approver for this user and policy using the corrected method name
         List<PolicyApproverAndReviewer> approvers = this.policyApproverAndReviewerRepository.findByUserIdAndPolicyFiles_Policy_PolicyId(userId, policyId);
-        if (approvers.isEmpty()) {
-            // If no approver record exists but user is a valid approver member, create one
-            PolicyFiles latestPolicyFile = policy.getPolicyFilesList()
-                    .get(policy.getPolicyFilesList().size() - 1);
-
-            PolicyApproverAndReviewer newApprover = new PolicyApproverAndReviewer();
-            newApprover.setUserId(userId);
-            newApprover.setApproved(isApproved);
-            newApprover.setRejectedReason(rejectedReason);
-            newApprover.setPolicyFiles(latestPolicyFile);
-            return this.policyApproverAndReviewerRepository.save(newApprover);
-        }
 
         // Get the most recent approver
         PolicyApproverAndReviewer approver = approvers.get(approvers.size() - 1);

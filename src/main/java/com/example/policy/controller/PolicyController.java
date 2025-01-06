@@ -163,15 +163,6 @@ public class PolicyController {
                 return ResponseModel.error("Policy not found with ID: " + policyId);
             }
 
-            // Check if user is an approver for this policy
-            List<PolicyMembers> policyMembers = policyMembersRepository.findByPolicyAndRole(policy, PolicyRole.APPROVER);
-            boolean isApprover = policyMembers.stream()
-                    .anyMatch(member -> member.getUser().getUserId() == (userId));
-
-            if (!isApprover) {
-                return ResponseModel.error("User is not authorized as an approver for this policy");
-            }
-
             PolicyApproverAndReviewer updatedApprover = this.policyService.updatePolicyApprover(
                     policyId, userId, isApproved, rejectedReason);
             return ResponseModel.success("Policy approval updated successfully", updatedApprover);
