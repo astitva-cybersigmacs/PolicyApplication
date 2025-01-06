@@ -166,8 +166,7 @@ public class PolicyServiceImpl implements PolicyService {
 
         // Update the policy files final acceptance status
         PolicyFiles policyFiles = reviewer.getPolicyFiles();
-        List<PolicyMembers> reviewerMembers = this.policyMembersRepository
-                .findByPolicyAndRole(policyFiles.getPolicy(), PolicyRole.REVIEWER);
+        List<PolicyMembers> reviewerMembers = this.policyMembersRepository.findByPolicyAndRole(policyFiles.getPolicy(), PolicyRole.REVIEWER);
 
         if (!reviewerMembers.isEmpty()) {
             long acceptedCount = this.policyApproverAndReviewerRepository
@@ -222,6 +221,7 @@ public class PolicyServiceImpl implements PolicyService {
         }
         return updatedApprover;
     }
+
     @Override
     public List<Policy> getAllPolicies() {
         return policyRepository.findAll();
