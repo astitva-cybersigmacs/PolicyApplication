@@ -224,21 +224,24 @@ public class PolicyServiceImpl implements PolicyService {
 
         // Update the policy files final approval status
         PolicyFiles policyFiles = approver.getPolicyFiles();
-        List<PolicyMembers> approverMembers = this.policyMembersRepository
-                .findByPolicyAndRole(policyFiles.getPolicy(), PolicyRole.APPROVER);
 
-        if (!approverMembers.isEmpty()) {
-            // Check if any approver has rejected
-            boolean hasRejection = this.policyApproverRepository
-                    .findByPolicyFiles(policyFiles)
-                    .stream()
-                    .anyMatch(a -> !a.isApproved());
+        // First check if finalAcceptance is true
+        if (policyFiles.isFinalAcceptance()) {
+            List<PolicyMembers> approverMembers = this.policyMembersRepository
+                    .findByPolicyAndRole(policyFiles.getPolicy(), PolicyRole.APPROVER);
 
-            // If any approver rejected, set finalApproval to false
-            policyFiles.setFinalAcceptance(!hasRejection);
-            this.policyFilesRepository.save(policyFiles);
+            if (!approverMembers.isEmpty()) {
+                // Check if any approver has rejected
+                boolean hasRejection = this.policyApproverRepository
+                        .findByPolicyFiles(policyFiles)
+                        .stream()
+                        .anyMatch(a -> !a.isApproved());
+
+                // If no approver rejected and finalAcceptance is true, set finalApproval to true
+                policyFiles.setFinalApproval(!hasRejection);
+                this.policyFilesRepository.save(policyFiles);
+            }
         }
-
         return updatedApprover;
     }
 

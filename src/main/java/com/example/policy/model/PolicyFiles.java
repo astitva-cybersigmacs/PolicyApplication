@@ -37,6 +37,7 @@ public class PolicyFiles {
     private String fileType;
 
     private boolean finalAcceptance;
+    private boolean finalApproval;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd MMM yyyy")
     @Temporal(TemporalType.TIMESTAMP)
