@@ -197,4 +197,17 @@ public class PolicyController {
         }
     }
 
+    @GetMapping
+    public ResponseEntity<?> getAllPolicies() {
+        try {
+            List<Policy> policies = this.policyService.getAllPolicies();
+            if (policies.isEmpty()) {
+                return ResponseModel.success("No policies found", policies);
+            }
+            return ResponseModel.success("Policies retrieved successfully", policies);
+        } catch (Exception e) {
+            return ResponseModel.error("Failed to retrieve policies: " + e.getMessage());
+        }
+    }
+
 }

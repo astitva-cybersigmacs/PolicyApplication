@@ -245,4 +245,8 @@ public class PolicyServiceImpl implements PolicyService {
         return updatedApprover;
     }
 
+    @Override
+    public List<Policy> getAllPolicies() {
+        return policyRepository.findAll();
+    }
 }
