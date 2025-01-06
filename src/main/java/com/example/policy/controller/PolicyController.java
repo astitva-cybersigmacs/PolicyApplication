@@ -1,6 +1,7 @@
 package com.example.policy.controller;
 
 import com.example.policy.model.*;
+import com.example.policy.repository.PolicyApproverRepository;
 import com.example.policy.service.PolicyService;
 import com.example.policy.utils.FileFormats;
 import com.example.policy.utils.FileUtils;
@@ -10,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 
 @RestController
 @AllArgsConstructor
@@ -18,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class PolicyController {
 
     private PolicyService policyService;
+    private PolicyApproverRepository policyApproverRepository;
 
     @PostMapping
     public ResponseEntity<?> createPolicy(@RequestParam(name = "policyName") String policyName,
@@ -173,6 +177,18 @@ public class PolicyController {
         }
 
         try {
+            List<PolicyApprover> approvers = policyApproverRepository.findAllByUserId(userId);
+            if (approvers.isEmpty()) {
+                return ResponseModel.error("No approvers found for user ID: " + userId);
+            }
+
+            PolicyApprover approver = approvers.get(approvers.size() - 1);
+            PolicyFiles policyFiles = approver.getPolicyFiles();
+
+            // Check if finalAcceptance is true before proceeding
+            if (!policyFiles.isFinalAcceptance()) {
+                return ResponseModel.error("Cannot proceed with approval. Policy must be accepted by reviewers first.");
+            }
             PolicyApprover updatedApprover = this.policyService.updatePolicyApprover(
                     userId, isApproved, rejectedReason);
             return ResponseModel.success("Policy approval updated successfully", updatedApprover);
