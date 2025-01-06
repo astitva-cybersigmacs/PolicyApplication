@@ -172,15 +172,36 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     @Transactional
-    public PolicyReviewer updatePolicyReviewer(Long userId, boolean isAccepted, String rejectedReason) {
-        List<PolicyReviewer> reviewers = this.policyReviewerRepository.findAllByUserId(userId);
+    public PolicyReviewer updatePolicyReviewer(Long policyId, Long userId, boolean isAccepted, String rejectedReason) {
+        // First validate if policy exists
+        Policy policy = this.policyRepository.findById(policyId)
+                .orElseThrow(() -> new RuntimeException("Policy not found with ID: " + policyId));
+
+        // First check if user is a member with REVIEWER role
+        PolicyMembers policyMember = this.policyMembersRepository
+                .findByPolicyAndRole(policy, PolicyRole.REVIEWER)
+                .stream()
+                .filter(member -> member.getUser().getUserId() == (userId))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("User is not assigned as a reviewer for this policy"));
+
+        // Find reviewer for this user and policy
+        List<PolicyReviewer> reviewers = this.policyReviewerRepository.findByUserIdAndPolicyId(userId, policyId);
         if (reviewers.isEmpty()) {
-            throw new RuntimeException("No reviewers found for user ID: " + userId);
+            // If no reviewer record exists but user is a valid reviewer member, create one
+            PolicyFiles latestPolicyFile = policy.getPolicyFilesList()
+                    .get(policy.getPolicyFilesList().size() - 1);
+
+            PolicyReviewer newReviewer = new PolicyReviewer();
+            newReviewer.setUserId(userId);
+            newReviewer.setAccepted(isAccepted);
+            newReviewer.setRejectedReason(rejectedReason);
+            newReviewer.setPolicyFiles(latestPolicyFile);
+            return this.policyReviewerRepository.save(newReviewer);
         }
 
-        // Get the most recent reviewer (assuming it's the last one in the list)
+        // Get the most recent reviewer
         PolicyReviewer reviewer = reviewers.get(reviewers.size() - 1);
-
         reviewer.setAccepted(isAccepted);
         reviewer.setRejectedReason(rejectedReason);
         PolicyReviewer updatedReviewer = this.policyReviewerRepository.save(reviewer);
@@ -204,7 +225,6 @@ public class PolicyServiceImpl implements PolicyService {
 
         return updatedReviewer;
     }
-
     @Override
     @Transactional
     public PolicyApprover updatePolicyApprover(Long userId, boolean isApproved, String rejectedReason) {

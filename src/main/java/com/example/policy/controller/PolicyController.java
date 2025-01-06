@@ -2,6 +2,7 @@ package com.example.policy.controller;
 
 import com.example.policy.model.*;
 import com.example.policy.repository.PolicyApproverRepository;
+import com.example.policy.repository.PolicyMembersRepository;
 import com.example.policy.service.PolicyService;
 import com.example.policy.utils.FileFormats;
 import com.example.policy.utils.FileUtils;
@@ -22,6 +23,7 @@ public class PolicyController {
 
     private PolicyService policyService;
     private PolicyApproverRepository policyApproverRepository;
+    private PolicyMembersRepository policyMembersRepository;
 
     @PostMapping
     public ResponseEntity<?> createPolicy(@RequestParam(name = "policyName") String policyName,
@@ -136,6 +138,7 @@ public class PolicyController {
 
     @PutMapping("/reviewer-decision")
     public ResponseEntity<?> updatePolicyReviewer(
+            @RequestParam Long policyId,
             @RequestParam Long userId,
             @RequestParam boolean isAccepted,
             @RequestParam(required = false) String rejectedReason) {
@@ -145,8 +148,23 @@ public class PolicyController {
         }
 
         try {
+            // First check if policy exists
+            Policy policy = policyService.getPolicyById(policyId);
+            if (policy == null) {
+                return ResponseModel.error("Policy not found with ID: " + policyId);
+            }
+
+            // Check if user is a reviewer for this policy
+            List<PolicyMembers> policyMembers = policyMembersRepository.findByPolicyAndRole(policy, PolicyRole.REVIEWER);
+            boolean isReviewer = policyMembers.stream()
+                    .anyMatch(member -> member.getUser().getUserId()==(userId));
+
+            if (!isReviewer) {
+                return ResponseModel.error("User is not authorized as a reviewer for this policy");
+            }
+
             PolicyReviewer updatedReviewer = this.policyService.updatePolicyReviewer(
-                    userId, isAccepted, rejectedReason);
+                    policyId, userId, isAccepted, rejectedReason);
             return ResponseModel.success("Policy review updated successfully", updatedReviewer);
         } catch (RuntimeException e) {
             return ResponseModel.error("Failed to update policy review: " + e.getMessage());

@@ -13,7 +13,7 @@ public interface PolicyService {
     void deletePolicy(Long policyId);
     Policy updatePolicyTemplate(Long policyId, MultipartFile policyTemplateList, String version);
     PolicyTemplate getPolicyTemplateById(Long templateId);
-    PolicyReviewer updatePolicyReviewer(Long userId, boolean isAccepted, String rejectedReason);
+    PolicyReviewer updatePolicyReviewer(Long policyId, Long userId, boolean isAccepted, String rejectedReason);;
     PolicyMembers addPolicyMember(Long policyId, Long userId, PolicyRole role);
     PolicyApprover updatePolicyApprover(Long userId, boolean isApproved, String rejectedReason);
     List<Policy> getAllPolicies();
