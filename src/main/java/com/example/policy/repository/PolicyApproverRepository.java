@@ -10,5 +10,5 @@ import java.util.List;
 @Repository
 public interface PolicyApproverRepository extends JpaRepository<PolicyApprover, Long> {
     List<PolicyApprover> findByPolicyFiles(PolicyFiles policyFiles);
-    List<PolicyApprover> findAllByUserId(Long userId);
+    List<PolicyApprover> findByUserIdAndPolicyFiles_Policy_PolicyId(Long userId, Long policyId);
 }

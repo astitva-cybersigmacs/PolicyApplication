@@ -225,19 +225,39 @@ public class PolicyServiceImpl implements PolicyService {
 
         return updatedReviewer;
     }
+
     @Override
     @Transactional
-    public PolicyApprover updatePolicyApprover(Long userId, boolean isApproved, String rejectedReason) {
-        // First, find all approvers for this user (similar to reviewer logic)
-        List<PolicyApprover> approvers = this.policyApproverRepository.findAllByUserId(userId);
+    public PolicyApprover updatePolicyApprover(Long policyId, Long userId, boolean isApproved, String rejectedReason) {
+        // First validate if policy exists
+        Policy policy = this.policyRepository.findById(policyId)
+                .orElseThrow(() -> new RuntimeException("Policy not found with ID: " + policyId));
+
+        // First check if user is a member with APPROVER role
+        PolicyMembers policyMember = this.policyMembersRepository
+                .findByPolicyAndRole(policy, PolicyRole.APPROVER)
+                .stream()
+                .filter(member -> member.getUser().getUserId() == (userId))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("User is not assigned as an approver for this policy"));
+
+        // Find approver for this user and policy using the corrected method name
+        List<PolicyApprover> approvers = this.policyApproverRepository.findByUserIdAndPolicyFiles_Policy_PolicyId(userId, policyId);
         if (approvers.isEmpty()) {
-            throw new RuntimeException("No approvers found for user ID: " + userId);
+            // If no approver record exists but user is a valid approver member, create one
+            PolicyFiles latestPolicyFile = policy.getPolicyFilesList()
+                    .get(policy.getPolicyFilesList().size() - 1);
+
+            PolicyApprover newApprover = new PolicyApprover();
+            newApprover.setUserId(userId);
+            newApprover.setApproved(isApproved);
+            newApprover.setRejectedReason(rejectedReason);
+            newApprover.setPolicyFiles(latestPolicyFile);
+            return this.policyApproverRepository.save(newApprover);
         }
 
-        // Get the most recent approver (assuming it's the last one in the list)
+        // Get the most recent approver
         PolicyApprover approver = approvers.get(approvers.size() - 1);
-
-        // Update approver's decision
         approver.setApproved(isApproved);
         approver.setRejectedReason(rejectedReason);
         PolicyApprover updatedApprover = this.policyApproverRepository.save(approver);
@@ -264,7 +284,6 @@ public class PolicyServiceImpl implements PolicyService {
         }
         return updatedApprover;
     }
-
     @Override
     public List<Policy> getAllPolicies() {
         return policyRepository.findAll();

@@ -186,6 +186,7 @@ public class PolicyController {
 
     @PutMapping("/approver-decision")
     public ResponseEntity<?> updatePolicyApprover(
+            @RequestParam Long policyId,
             @RequestParam Long userId,
             @RequestParam boolean isApproved,
             @RequestParam(required = false) String rejectedReason) {
@@ -195,20 +196,23 @@ public class PolicyController {
         }
 
         try {
-            List<PolicyApprover> approvers = policyApproverRepository.findAllByUserId(userId);
-            if (approvers.isEmpty()) {
-                return ResponseModel.error("No approvers found for user ID: " + userId);
+            // First check if policy exists
+            Policy policy = policyService.getPolicyById(policyId);
+            if (policy == null) {
+                return ResponseModel.error("Policy not found with ID: " + policyId);
             }
 
-            PolicyApprover approver = approvers.get(approvers.size() - 1);
-            PolicyFiles policyFiles = approver.getPolicyFiles();
+            // Check if user is an approver for this policy
+            List<PolicyMembers> policyMembers = policyMembersRepository.findByPolicyAndRole(policy, PolicyRole.APPROVER);
+            boolean isApprover = policyMembers.stream()
+                    .anyMatch(member -> member.getUser().getUserId() == (userId));
 
-            // Check if finalAcceptance is true before proceeding
-            if (!policyFiles.isFinalAcceptance()) {
-                return ResponseModel.error("Cannot proceed with approval. Policy must be accepted by reviewers first.");
+            if (!isApprover) {
+                return ResponseModel.error("User is not authorized as an approver for this policy");
             }
+
             PolicyApprover updatedApprover = this.policyService.updatePolicyApprover(
-                    userId, isApproved, rejectedReason);
+                    policyId, userId, isApproved, rejectedReason);
             return ResponseModel.success("Policy approval updated successfully", updatedApprover);
         } catch (RuntimeException e) {
             return ResponseModel.error("Failed to update policy approval: " + e.getMessage());

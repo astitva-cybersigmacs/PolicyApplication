@@ -12,7 +12,6 @@ import java.util.List;
 @Repository
 public interface PolicyReviewerRepository extends JpaRepository<PolicyReviewer, Long> {
     List<PolicyReviewer> findByPolicyFiles(PolicyFiles policyFiles);
-    List<PolicyReviewer> findAllByUserId(Long userId);
 
     @Query("SELECT pr FROM PolicyReviewer pr WHERE pr.userId = :userId AND pr.policyFiles.policy.policyId = :policyId")
     List<PolicyReviewer> findByUserIdAndPolicyId(@Param("userId") Long userId, @Param("policyId") Long policyId);
