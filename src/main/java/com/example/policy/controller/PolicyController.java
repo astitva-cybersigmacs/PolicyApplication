@@ -6,10 +6,12 @@ import com.example.policy.service.PolicyService;
 import com.example.policy.utils.FileFormats;
 import com.example.policy.utils.ResponseModel;
 import lombok.AllArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Date;
 import java.util.List;
 
 
@@ -155,7 +157,10 @@ public class PolicyController {
             @RequestParam("policyId") Long policyId,
             @RequestParam("file") MultipartFile file,
             @RequestParam("version") String version,
-            @RequestParam("status")String status) {
+            @RequestParam("status") String status,
+            @RequestParam("createdDate") @DateTimeFormat(pattern = "dd MMM yyyy") Date createdDate,
+            @RequestParam("effectiveStartDate") @DateTimeFormat(pattern = "dd MMM yyyy") Date effectiveStartDate,
+            @RequestParam("effectiveEndDate") @DateTimeFormat(pattern = "dd MMM yyyy") Date effectiveEndDate) {
 
         if (!"CREATED".equals(status)) {
             return ResponseEntity.badRequest().body("Invalid status. Only 'CREATED' is allowed.");
@@ -165,6 +170,11 @@ public class PolicyController {
             return ResponseModel.customValidations("file", "File is required");
         }
 
+        // Validate dates
+        if (effectiveStartDate != null && effectiveEndDate != null && effectiveStartDate.after(effectiveEndDate)) {
+            return ResponseModel.customValidations("dates", "Effective start date must be before effective end date");
+        }
+
         // Validate file format
         if (!FileFormats.proposalFileFormat().contains(file.getContentType())) {
             return ResponseModel.customValidations("fileFormat",
@@ -172,7 +182,8 @@ public class PolicyController {
         }
 
         try {
-           this.policyService.addPolicyFile(policyId, file, version, status);
+            this.policyService.addPolicyFile(policyId, file, version, status,
+                    createdDate, effectiveStartDate, effectiveEndDate);
             return ResponseModel.success("Policy file added successfully");
         } catch (Exception e) {
             return ResponseModel.error("Failed to add policy file: " + e.getMessage());

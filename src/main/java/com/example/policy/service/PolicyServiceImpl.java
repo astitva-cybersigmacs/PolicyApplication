@@ -200,7 +200,8 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     @Transactional
-    public PolicyFiles addPolicyFile(Long policyId, MultipartFile file, String version, String status) {
+    public PolicyFiles addPolicyFile(Long policyId, MultipartFile file, String version,
+                                     String status, Date createdDate, Date effectiveStartDate, Date effectiveEndDate) {
         // Get existing policy
         Policy policy = this.policyRepository.findById(policyId)
                 .orElseThrow(() -> new RuntimeException("Policy not found with id: " + policyId));
@@ -209,7 +210,9 @@ public class PolicyServiceImpl implements PolicyService {
             PolicyFiles policyFile = new PolicyFiles();
             policyFile.setPolicy(policy);
             policyFile.setPolicyVersion(version);
-            policyFile.setCreatedDate(new Date());
+            policyFile.setCreatedDate(createdDate);
+            policyFile.setEffctiveStartDate(effectiveStartDate);
+            policyFile.setEffectiveEndDate(effectiveEndDate);
             policyFile.setStatus(status);
 
             // Set file details
