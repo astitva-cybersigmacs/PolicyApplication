@@ -14,7 +14,7 @@ public interface PolicyService {
     PolicyMembers addPolicyMember(Long policyId, Long userId, PolicyRole role);
     PolicyApproverAndReviewer updatePolicyApprover(Long policyId, Long userId, boolean isApproved, String rejectedReason);
     List<Policy> getAllPolicies();
-    PolicyFiles updatePolicyFiles(Long policyId, String policyFileName, MultipartFile file, String version);
+    PolicyFiles updatePolicyFiles(Long policyId, Long policyFileId, MultipartFile file, String version, String status, Date effectiveEndDate);
     PolicyFiles addPolicyFile(Long policyId, MultipartFile file, String version, String status, Date createdDate, Date effectiveStartDate, Date effectiveEndDate);
 
     PolicyFiles getPolicyFilesById(Long policyFilesId);

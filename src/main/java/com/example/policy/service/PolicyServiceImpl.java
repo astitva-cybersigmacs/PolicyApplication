@@ -169,32 +169,35 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     @Transactional
-    public PolicyFiles updatePolicyFiles(Long policyId, String policyFileName, MultipartFile file, String version) {
-        Policy policy = this.policyRepository.findById(policyId)
-                .orElseThrow(() -> new RuntimeException("Policy not found with id: " + policyId));
+    public PolicyFiles updatePolicyFiles(Long policyId, Long policyFileId, MultipartFile file,
+                                         String version, String status, Date effectiveEndDate) {
+
+        // First verify policy exists
+        this.policyRepository.findById(policyId).orElseThrow(() -> new RuntimeException("Policy not found with id: " + policyId));
+
+        // Find the specific policy file to update
+        PolicyFiles existingPolicyFile = this.policyFilesRepository.findById(policyFileId).orElseThrow(() -> new RuntimeException("Policy file not found with id: " + policyFileId));
+
+        // Verify the policy file belongs to the specified policy
+        if (existingPolicyFile.getPolicy().getPolicyId() != policyId) {
+            throw new RuntimeException("Policy file does not belong to the specified policy");
+        }
 
         try {
-            PolicyFiles policyFiles = new PolicyFiles();
-            policyFiles.setPolicyVersion(version);
-            policyFiles.setCreatedDate(new Date());
-            policyFiles.setPolicy(policy);
+            existingPolicyFile.setFileName(file.getOriginalFilename());
+            existingPolicyFile.setFileType(file.getContentType());
+            existingPolicyFile.setFile(FileUtils.compressFile(file.getBytes()));
+            existingPolicyFile.setPolicyVersion(version);
+            existingPolicyFile.setStatus(status);
 
-            // Set file details
-            policyFiles.setFileName(file.getOriginalFilename());
-            policyFiles.setFileType(file.getContentType());
-            policyFiles.setFile(FileUtils.compressFile(file.getBytes()));
+            if (existingPolicyFile.getEffctiveStartDate() != null && effectiveEndDate.before(existingPolicyFile.getEffctiveStartDate())) {
+                    throw new RuntimeException("Effective end date cannot be before effective start date");
+            }
+            existingPolicyFile.setEffectiveEndDate(effectiveEndDate);
 
-            // Set initial approval states
-            policyFiles.setFinalAcceptance(false);
-            policyFiles.setFinalApproval(false);
-
-            // Add to policy's files list
-            policy.getPolicyFilesList().add(policyFiles);
-
-            // Save and return
-            return this.policyFilesRepository.save(policyFiles);
+            return this.policyFilesRepository.save(existingPolicyFile);
         } catch (IOException e) {
-            throw new RuntimeException("Error processing file: " + file.getOriginalFilename());
+            throw new RuntimeException("Error processing file: " + e.getMessage());
         }
     }
 

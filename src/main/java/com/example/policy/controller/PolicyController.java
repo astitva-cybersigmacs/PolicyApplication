@@ -141,28 +141,22 @@ public class PolicyController {
     @PutMapping("/files")
     public ResponseEntity<?> updatePolicyFiles(
             @RequestParam Long policyId,
-            @RequestParam String policyFileName,
+            @RequestParam Long policyFileId,
             @RequestParam MultipartFile file,
-            @RequestParam String version) {
+            @RequestParam String version,
+            @RequestParam String status,
+            @RequestParam @DateTimeFormat(pattern = "dd MMM yyyy") Date effectiveEndDate) {
 
-        if (file == null) {
-            return ResponseModel.customValidations("file", "File is required");
-        }
-
-        // Validate file format
-        if (!FileFormats.proposalFileFormat().contains(file.getContentType())) {
+        // Validate file format if file is being updated
+        if (file != null && !FileFormats.proposalFileFormat().contains(file.getContentType())) {
             return ResponseModel.customValidations("fileFormat",
                     "Unsupported file format: " + file.getContentType());
         }
-
         try {
             PolicyFiles updatedPolicyFiles = this.policyService.updatePolicyFiles(
-                    policyId, policyFileName, file, version);
+                    policyId, policyFileId, file, version, status, effectiveEndDate);
             return ResponseModel.success("Policy files updated successfully", updatedPolicyFiles);
         } catch (RuntimeException e) {
-            if (e.getMessage().contains("Policy not found")) {
-                return ResponseModel.notFound(e.getMessage());
-            }
             return ResponseModel.error("Failed to update policy files: " + e.getMessage());
         }
     }
