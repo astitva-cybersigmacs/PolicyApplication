@@ -35,123 +35,6 @@ public class PolicyController {
         }
     }
 
-    @GetMapping("/{policyFilesId}")
-    public ResponseEntity<?> getPolicyById(@PathVariable Long policyFilesId) {
-        PolicyFiles policy = this.policyService.getPolicyFilesById(policyFilesId);
-        if (policy == null) {
-            return ResponseModel.notFound("Policy not found");
-        }
-        return ResponseModel.success("Policy retrieved successfully", policy);
-    }
-
-
-    @PutMapping("/reviewer-decision")
-    public ResponseEntity<?> updatePolicyReviewer(
-            @RequestParam Long policyId,
-            @RequestParam Long userId,
-            @RequestParam boolean isAccepted,
-            @RequestParam(required = false) String rejectedReason) {
-
-        if (!isAccepted && (rejectedReason == null || rejectedReason.trim().isEmpty())) {
-            return ResponseModel.customValidations("rejectedReason", "Reason is required when rejecting");
-        }
-
-        try {
-            // First check if policy exists
-            Policy policy = this.policyService.getPolicyById(policyId);
-            if (policy == null) {
-                return ResponseModel.error("Policy not found with ID: " + policyId);
-            }
-
-            PolicyApproverAndReviewer updatedReviewer = this.policyService.updatePolicyReviewer(
-                    policyId, userId, isAccepted, rejectedReason);
-            return ResponseModel.success("Policy review updated successfully", updatedReviewer);
-        } catch (RuntimeException e) {
-            return ResponseModel.error("Failed to update policy review: " + e.getMessage());
-        }
-    }
-
-    @PostMapping("/members")
-    public ResponseEntity<?> addPolicyMember(
-            @RequestParam Long policyId,
-            @RequestParam Long userId,
-            @RequestParam PolicyRole role) {
-        try {
-            this.policyService.addPolicyMember(policyId, userId, role);
-            return ResponseModel.success("Policy member added successfully");
-        } catch (Exception e) {
-            return ResponseModel.error("Failed to add policy member: " + e.getMessage());
-        }
-    }
-
-    @PutMapping("/approver-decision")
-    public ResponseEntity<?> updatePolicyApprover(
-            @RequestParam Long policyId,
-            @RequestParam Long userId,
-            @RequestParam boolean isApproved,
-            @RequestParam(required = false) String rejectedReason) {
-
-        if (!isApproved && (rejectedReason == null || rejectedReason.trim().isEmpty())) {
-            return ResponseModel.customValidations("rejectedReason", "Reason is required when rejecting");
-        }
-
-        try {
-            // First check if policy exists
-            Policy policy = policyService.getPolicyById(policyId);
-            if (policy == null) {
-                return ResponseModel.error("Policy not found with ID: " + policyId);
-            }
-
-            PolicyApproverAndReviewer updatedApprover = this.policyService.updatePolicyApprover(
-                    policyId, userId, isApproved, rejectedReason);
-            return ResponseModel.success("Policy approval updated successfully", updatedApprover);
-        } catch (RuntimeException e) {
-            return ResponseModel.error("Failed to update policy approval: " + e.getMessage());
-        }
-    }
-
-    @GetMapping
-    public ResponseEntity<?> getAllPolicies() {
-        try {
-            List<Policy> policies = this.policyService.getAllPolicies();
-            if (policies.isEmpty()) {
-                return ResponseModel.success("No policies found", policies);
-            }
-            return ResponseModel.success("Policies retrieved successfully", policies);
-        } catch (Exception e) {
-            return ResponseModel.error("Failed to retrieve policies: " + e.getMessage());
-        }
-    }
-
-    @PutMapping("/files")
-    public ResponseEntity<?> updatePolicyFiles(
-            @RequestParam Long policyId,
-            @RequestParam String policyFileName,
-            @RequestParam MultipartFile file,
-            @RequestParam String version) {
-
-        if (file == null) {
-            return ResponseModel.customValidations("file", "File is required");
-        }
-
-        // Validate file format
-        if (!FileFormats.proposalFileFormat().contains(file.getContentType())) {
-            return ResponseModel.customValidations("fileFormat",
-                    "Unsupported file format: " + file.getContentType());
-        }
-
-        try {
-            PolicyFiles updatedPolicyFiles = this.policyService.updatePolicyFiles(
-                    policyId, policyFileName, file, version);
-            return ResponseModel.success("Policy files updated successfully", updatedPolicyFiles);
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("Policy not found")) {
-                return ResponseModel.notFound(e.getMessage());
-            }
-            return ResponseModel.error("Failed to update policy files: " + e.getMessage());
-        }
-    }
-
     @PostMapping("/files")
     public ResponseEntity<?> addPolicyFile(
             @RequestParam("policyId") Long policyId,
@@ -190,6 +73,123 @@ public class PolicyController {
         }
     }
 
+    @PostMapping("/members")
+    public ResponseEntity<?> addPolicyMember(
+            @RequestParam Long policyId,
+            @RequestParam Long userId,
+            @RequestParam PolicyRole role) {
+        try {
+            this.policyService.addPolicyMember(policyId, userId, role);
+            return ResponseModel.success("Policy member added successfully");
+        } catch (Exception e) {
+            return ResponseModel.error("Failed to add policy member: " + e.getMessage());
+        }
+    }
+
+    @PutMapping("/reviewer-decision")
+    public ResponseEntity<?> updatePolicyReviewer(
+            @RequestParam Long policyId,
+            @RequestParam Long userId,
+            @RequestParam boolean isAccepted,
+            @RequestParam(required = false) String rejectedReason) {
+
+        if (!isAccepted && (rejectedReason == null || rejectedReason.trim().isEmpty())) {
+            return ResponseModel.customValidations("rejectedReason", "Reason is required when rejecting");
+        }
+
+        try {
+            // First check if policy exists
+            Policy policy = this.policyService.getPolicyById(policyId);
+            if (policy == null) {
+                return ResponseModel.error("Policy not found with ID: " + policyId);
+            }
+
+            PolicyApproverAndReviewer updatedReviewer = this.policyService.updatePolicyReviewer(
+                    policyId, userId, isAccepted, rejectedReason);
+            return ResponseModel.success("Policy review updated successfully", updatedReviewer);
+        } catch (RuntimeException e) {
+            return ResponseModel.error("Failed to update policy review: " + e.getMessage());
+        }
+    }
+
+    @PutMapping("/approver-decision")
+    public ResponseEntity<?> updatePolicyApprover(
+            @RequestParam Long policyId,
+            @RequestParam Long userId,
+            @RequestParam boolean isApproved,
+            @RequestParam(required = false) String rejectedReason) {
+
+        if (!isApproved && (rejectedReason == null || rejectedReason.trim().isEmpty())) {
+            return ResponseModel.customValidations("rejectedReason", "Reason is required when rejecting");
+        }
+
+        try {
+            // First check if policy exists
+            Policy policy = policyService.getPolicyById(policyId);
+            if (policy == null) {
+                return ResponseModel.error("Policy not found with ID: " + policyId);
+            }
+
+            PolicyApproverAndReviewer updatedApprover = this.policyService.updatePolicyApprover(
+                    policyId, userId, isApproved, rejectedReason);
+            return ResponseModel.success("Policy approval updated successfully", updatedApprover);
+        } catch (RuntimeException e) {
+            return ResponseModel.error("Failed to update policy approval: " + e.getMessage());
+        }
+    }
+
+    @PutMapping("/files")
+    public ResponseEntity<?> updatePolicyFiles(
+            @RequestParam Long policyId,
+            @RequestParam String policyFileName,
+            @RequestParam MultipartFile file,
+            @RequestParam String version) {
+
+        if (file == null) {
+            return ResponseModel.customValidations("file", "File is required");
+        }
+
+        // Validate file format
+        if (!FileFormats.proposalFileFormat().contains(file.getContentType())) {
+            return ResponseModel.customValidations("fileFormat",
+                    "Unsupported file format: " + file.getContentType());
+        }
+
+        try {
+            PolicyFiles updatedPolicyFiles = this.policyService.updatePolicyFiles(
+                    policyId, policyFileName, file, version);
+            return ResponseModel.success("Policy files updated successfully", updatedPolicyFiles);
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("Policy not found")) {
+                return ResponseModel.notFound(e.getMessage());
+            }
+            return ResponseModel.error("Failed to update policy files: " + e.getMessage());
+        }
+    }
+
+
+    @GetMapping
+    public ResponseEntity<?> getAllPolicies() {
+        try {
+            List<Policy> policies = this.policyService.getAllPolicies();
+            if (policies.isEmpty()) {
+                return ResponseModel.success("No policies found", policies);
+            }
+            return ResponseModel.success("Policies retrieved successfully", policies);
+        } catch (Exception e) {
+            return ResponseModel.error("Failed to retrieve policies: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/{policyFilesId}")
+    public ResponseEntity<?> getPolicyById(@PathVariable Long policyFilesId) {
+        PolicyFiles policy = this.policyService.getPolicyFilesById(policyFilesId);
+        if (policy == null) {
+            return ResponseModel.notFound("Policy not found");
+        }
+        return ResponseModel.success("Policy retrieved successfully", policy);
+    }
+
     @GetMapping("/response/{policyId}")
     public ResponseEntity<?> getPolicyResponseModelById(@PathVariable Long policyId) {
         try {
@@ -212,7 +212,4 @@ public class PolicyController {
             return ResponseModel.error("Failed to retrieve policy response model: " + e.getMessage());
         }
     }
-
-
-
 }
