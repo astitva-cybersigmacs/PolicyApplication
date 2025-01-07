@@ -16,4 +16,5 @@ public interface PolicyService {
     PolicyApproverAndReviewer updatePolicyApprover(Long policyId, Long userId, boolean isApproved, String rejectedReason);
     List<Policy> getAllPolicies();
     PolicyFiles updatePolicyFiles(Long policyId, String policyFileName, MultipartFile file, String version);
+    PolicyFiles addPolicyFile(Long policyId, MultipartFile file, String version);
 }

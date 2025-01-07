@@ -187,7 +187,7 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     public List<Policy> getAllPolicies() {
-        return policyRepository.findAll();
+        return this.policyRepository.findAll();
     }
 
     @Override
@@ -219,6 +219,43 @@ public class PolicyServiceImpl implements PolicyService {
             return this.policyFilesRepository.save(policyFiles);
         } catch (IOException e) {
             throw new RuntimeException("Error processing file: " + file.getOriginalFilename());
+        }
+    }
+
+    @Override
+    @Transactional
+    public PolicyFiles addPolicyFile(Long policyId, MultipartFile file, String version) {
+        // Get existing policy
+        Policy policy = this.policyRepository.findById(policyId)
+                .orElseThrow(() -> new RuntimeException("Policy not found with id: " + policyId));
+
+        try {
+            PolicyFiles policyFile = new PolicyFiles();
+            policyFile.setPolicy(policy);
+            policyFile.setPolicyFileName(file.getOriginalFilename());
+            policyFile.setPolicyVersion(version);
+            policyFile.setCreatedDate(new Date());
+
+            // Set file details
+            policyFile.setFileName(file.getOriginalFilename());
+            policyFile.setFileType(file.getContentType());
+            policyFile.setFile(FileUtils.compressFile(file.getBytes()));
+
+            // Set initial approval states
+            policyFile.setFinalAcceptance(false);
+            policyFile.setFinalApproval(false);
+
+            // Add to policy's files list
+            if (policy.getPolicyFilesList() == null) {
+                policy.setPolicyFilesList(new ArrayList<>());
+            }
+            policy.getPolicyFilesList().add(policyFile);
+
+            // Save the policy file
+            return this.policyFilesRepository.save(policyFile);
+
+        } catch (IOException e) {
+            throw new RuntimeException("Error processing file: " + file.getOriginalFilename(), e);
         }
     }
 }

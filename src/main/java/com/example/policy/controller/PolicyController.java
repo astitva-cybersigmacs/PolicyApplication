@@ -202,4 +202,29 @@ public class PolicyController {
         }
     }
 
+    @PostMapping("/files")
+    public ResponseEntity<?> addPolicyFile(
+            @RequestParam("policyId") Long policyId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("version") String version) {
+
+        if (file == null) {
+            return ResponseModel.customValidations("file", "File is required");
+        }
+
+        // Validate file format
+        if (!FileFormats.proposalFileFormat().contains(file.getContentType())) {
+            return ResponseModel.customValidations("fileFormat",
+                    "Unsupported file format: " + file.getContentType());
+        }
+
+        try {
+           this.policyService.addPolicyFile(policyId, file, version);
+            return ResponseModel.success("Policy file added successfully");
+        } catch (Exception e) {
+            return ResponseModel.error("Failed to add policy file: " + e.getMessage());
+        }
+    }
+
+
 }
