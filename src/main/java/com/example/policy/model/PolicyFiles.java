@@ -24,7 +24,6 @@ public class PolicyFiles {
     @Column(name = "policy_files_id")
     private long policyFilesId ;
 
-    private String policyFileName;
     private String policyVersion;
 
     @JsonIgnore
@@ -33,6 +32,7 @@ public class PolicyFiles {
     private byte[] file;
     private String fileName;
     private String fileType;
+    private String status;
 
     private boolean finalAcceptance;
     private boolean finalApproval;

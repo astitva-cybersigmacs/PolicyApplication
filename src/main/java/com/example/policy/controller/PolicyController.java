@@ -44,48 +44,6 @@ public class PolicyController {
     }
 
 
-    @PutMapping("/template")
-    public ResponseEntity<?> updatePolicyTemplate(@RequestParam Long policyId,
-                                                  @RequestParam MultipartFile policyTemplate,
-                                                  @RequestParam String version) {
-        if (policyTemplate == null) {
-            return ResponseModel.customValidations("policyTemplateList", "policyTemplateList is not present");
-        }
-
-        if (!FileFormats.proposalFileFormat().contains(policyTemplate.getContentType())) {
-            return ResponseModel.customValidations("fileFormat",
-                    "Unsupported file format: " + policyTemplate.getContentType());
-        }
-
-        try {
-             this.policyService.updatePolicyTemplate(policyId, policyTemplate, version);
-             return ResponseModel.success("Policy template updated successfully");
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("Policy not found")) {
-                return ResponseModel.notFound(e.getMessage());
-            }
-            return ResponseModel.error("Failed to update policy template: " + e.getMessage());
-        }
-    }
-
-    @GetMapping("/download/template/{templateId}")
-    public ResponseEntity<?> downloadPolicyFile(@PathVariable Long templateId) {
-        try {
-            PolicyTemplate template = policyService.getPolicyTemplateById(templateId);
-            if (template == null) {
-                return ResponseModel.notFound("Policy template not found with ID: " + templateId);
-            }
-
-            byte[] decompressedFile = FileUtils.decompressFile(template.getFile());
-            return ResponseModel.mediaFile(
-                    template.getFileType(),
-                    decompressedFile
-            );
-        } catch (Exception e) {
-            return ResponseModel.error("Error downloading file: " + e.getMessage());
-        }
-    }
-
     @PutMapping("/reviewer-decision")
     public ResponseEntity<?> updatePolicyReviewer(
             @RequestParam Long policyId,
@@ -206,7 +164,12 @@ public class PolicyController {
     public ResponseEntity<?> addPolicyFile(
             @RequestParam("policyId") Long policyId,
             @RequestParam("file") MultipartFile file,
-            @RequestParam("version") String version) {
+            @RequestParam("version") String version,
+            @RequestParam("status")String status) {
+
+        if (!"CREATED".equals(status)) {
+            return ResponseEntity.badRequest().body("Invalid status. Only 'CREATED' is allowed.");
+        }
 
         if (file == null) {
             return ResponseModel.customValidations("file", "File is required");
@@ -219,7 +182,7 @@ public class PolicyController {
         }
 
         try {
-           this.policyService.addPolicyFile(policyId, file, version);
+           this.policyService.addPolicyFile(policyId, file, version, status);
             return ResponseModel.success("Policy file added successfully");
         } catch (Exception e) {
             return ResponseModel.error("Failed to add policy file: " + e.getMessage());

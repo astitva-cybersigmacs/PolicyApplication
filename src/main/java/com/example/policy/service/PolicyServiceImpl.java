@@ -19,7 +19,6 @@ import java.util.List;
 public class PolicyServiceImpl implements PolicyService {
 
     private PolicyRepository policyRepository;
-    private PolicyTemplateRepository policyTemplateRepository;
     private PolicyMembersRepository policyMembersRepository;
     private PolicyFilesRepository policyFilesRepository;
     private UserRepository userRepository;
@@ -84,32 +83,6 @@ public class PolicyServiceImpl implements PolicyService {
         return this.policyRepository.findById(policyId).orElse(null);
     }
 
-    @Override
-    @Transactional
-    public Policy updatePolicyTemplate(Long policyId, MultipartFile policyTemplateList, String version) {
-        Policy existingPolicy = this.policyRepository.findById(policyId)
-                .orElseThrow(() -> new RuntimeException("Policy not found with id: " + policyId));
-
-        try {
-            PolicyTemplate template = new PolicyTemplate();
-            template.setFileName(policyTemplateList.getOriginalFilename());
-            template.setFileType(policyTemplateList.getContentType());
-            template.setFile(FileUtils.compressFile(policyTemplateList.getBytes()));
-            template.setVersion(version);
-            template.setPolicy(existingPolicy);
-
-            existingPolicy.getPolicyTemplateList().add(template);
-
-            return this.policyRepository.save(existingPolicy);
-        } catch (IOException e) {
-            throw new RuntimeException("Error processing file: " + policyTemplateList.getOriginalFilename());
-        }
-    }
-
-    @Override
-    public PolicyTemplate getPolicyTemplateById(Long templateId) {
-        return this.policyTemplateRepository.findById(templateId).orElse(null);
-    }
 
     @Override
     @Transactional
@@ -118,10 +91,9 @@ public class PolicyServiceImpl implements PolicyService {
         this.policyRepository.findById(policyId).orElseThrow(() -> new RuntimeException("Policy not found with ID: " + policyId));
 
         // Find reviewer for this user and policy
-        List<PolicyApproverAndReviewer> reviewers = this.policyApproverAndReviewerRepository
-                .findByUserIdAndPolicyFiles_Policy_PolicyId(userId, policyId);
+        List<PolicyApproverAndReviewer> reviewers = this.policyApproverAndReviewerRepository.findByUserIdAndPolicyFiles_Policy_PolicyId(userId, policyId);
 
-        // Get the most recent reviewer
+        // Get the most recent reviewe
         PolicyApproverAndReviewer reviewer = reviewers.get(reviewers.size() - 1);
         reviewer.setApproved(isAccepted);
         reviewer.setRejectedReason(rejectedReason);
@@ -153,7 +125,6 @@ public class PolicyServiceImpl implements PolicyService {
         this.policyRepository.findById(policyId).orElseThrow(() -> new RuntimeException("Policy not found with ID: " + policyId));
 
 
-        // Find approver for this user and policy using the corrected method name
         List<PolicyApproverAndReviewer> approvers = this.policyApproverAndReviewerRepository.findByUserIdAndPolicyFiles_Policy_PolicyId(userId, policyId);
 
         // Get the most recent approver
@@ -179,6 +150,12 @@ public class PolicyServiceImpl implements PolicyService {
 
                 // If no approver rejected and finalAcceptance is true, set finalApproval to true
                 policyFiles.setFinalApproval(!hasRejection);
+                if (policyFiles.isFinalApproval()) {
+                    policyFiles.setStatus("APPROVED");
+                }
+                else {
+                    policyFiles.setStatus("REJECTED");
+                }
                 this.policyFilesRepository.save(policyFiles);
             }
         }
@@ -198,7 +175,6 @@ public class PolicyServiceImpl implements PolicyService {
 
         try {
             PolicyFiles policyFiles = new PolicyFiles();
-            policyFiles.setPolicyFileName(policyFileName);
             policyFiles.setPolicyVersion(version);
             policyFiles.setCreatedDate(new Date());
             policyFiles.setPolicy(policy);
@@ -224,7 +200,7 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     @Transactional
-    public PolicyFiles addPolicyFile(Long policyId, MultipartFile file, String version) {
+    public PolicyFiles addPolicyFile(Long policyId, MultipartFile file, String version, String status) {
         // Get existing policy
         Policy policy = this.policyRepository.findById(policyId)
                 .orElseThrow(() -> new RuntimeException("Policy not found with id: " + policyId));
@@ -232,9 +208,9 @@ public class PolicyServiceImpl implements PolicyService {
         try {
             PolicyFiles policyFile = new PolicyFiles();
             policyFile.setPolicy(policy);
-            policyFile.setPolicyFileName(file.getOriginalFilename());
             policyFile.setPolicyVersion(version);
             policyFile.setCreatedDate(new Date());
+            policyFile.setStatus(status);
 
             // Set file details
             policyFile.setFileName(file.getOriginalFilename());
