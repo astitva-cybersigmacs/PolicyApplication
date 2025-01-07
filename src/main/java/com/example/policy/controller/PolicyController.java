@@ -33,9 +33,9 @@ public class PolicyController {
         }
     }
 
-    @GetMapping("/{policyId}")
-    public ResponseEntity<?> getPolicyById(@PathVariable Long policyId) {
-        Policy policy = this.policyService.getPolicyById(policyId);
+    @GetMapping("/{policyFilesId}")
+    public ResponseEntity<?> getPolicyById(@PathVariable Long policyFilesId) {
+        PolicyFiles policy = this.policyService.getPolicyFilesById(policyFilesId);
         if (policy == null) {
             return ResponseModel.notFound("Policy not found");
         }
@@ -178,6 +178,30 @@ public class PolicyController {
             return ResponseModel.error("Failed to add policy file: " + e.getMessage());
         }
     }
+
+    @GetMapping("/response/{policyId}")
+    public ResponseEntity<?> getPolicyResponseModelById(@PathVariable Long policyId) {
+        try {
+            // Retrieve the policy from the service
+            Policy policy = this.policyService.getPolicyById(policyId);
+            if (policy == null) {
+                return ResponseModel.notFound("Policy not found");
+            }
+
+            // Map Policy to PolicyResponseModel
+            PolicyResponseModel responseModel = new PolicyResponseModel(
+                    policy.getPolicyId(),
+                    policy.getPolicyName(),
+                    policy.getDescription(),
+                    policy.getPolicyFilesList()
+            );
+
+            return ResponseModel.success("Policy response model retrieved successfully", responseModel);
+        } catch (Exception e) {
+            return ResponseModel.error("Failed to retrieve policy response model: " + e.getMessage());
+        }
+    }
+
 
 
 }

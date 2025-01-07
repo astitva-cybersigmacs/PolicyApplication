@@ -43,10 +43,6 @@ public class PolicyFiles {
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd MMM yyyy")
     @Temporal(TemporalType.TIMESTAMP)
-    private Date approvedDate;
-
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd MMM yyyy")
-    @Temporal(TemporalType.TIMESTAMP)
     private Date effctiveStartDate;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd MMM yyyy")

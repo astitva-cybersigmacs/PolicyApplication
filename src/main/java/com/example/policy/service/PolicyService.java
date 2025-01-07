@@ -15,4 +15,6 @@ public interface PolicyService {
     List<Policy> getAllPolicies();
     PolicyFiles updatePolicyFiles(Long policyId, String policyFileName, MultipartFile file, String version);
     PolicyFiles addPolicyFile(Long policyId, MultipartFile file, String version, String status);
+
+    PolicyFiles getPolicyFilesById(Long policyFilesId);
 }

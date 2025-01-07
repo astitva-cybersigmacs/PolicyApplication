@@ -234,4 +234,9 @@ public class PolicyServiceImpl implements PolicyService {
             throw new RuntimeException("Error processing file: " + file.getOriginalFilename(), e);
         }
     }
+
+    @Override
+    public PolicyFiles getPolicyFilesById(Long policyFilesId) {
+        return this.policyFilesRepository.findById(policyFilesId).orElse(null);
+    }
 }
