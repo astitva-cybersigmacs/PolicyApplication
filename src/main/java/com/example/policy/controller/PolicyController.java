@@ -4,7 +4,6 @@ import com.example.policy.model.*;
 import com.example.policy.repository.PolicyMembersRepository;
 import com.example.policy.service.PolicyService;
 import com.example.policy.utils.FileFormats;
-import com.example.policy.utils.FileUtils;
 import com.example.policy.utils.ResponseModel;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -60,15 +59,6 @@ public class PolicyController {
             Policy policy = this.policyService.getPolicyById(policyId);
             if (policy == null) {
                 return ResponseModel.error("Policy not found with ID: " + policyId);
-            }
-
-            // Check if user is a reviewer for this policy
-            List<PolicyMembers> policyMembers = this.policyMembersRepository.findByPolicyAndRole(policy, PolicyRole.REVIEWER);
-            boolean isReviewer = policyMembers.stream()
-                    .anyMatch(member -> member.getUser().getUserId()==(userId));
-
-            if (!isReviewer) {
-                return ResponseModel.error("User is not authorized as a reviewer for this policy");
             }
 
             PolicyApproverAndReviewer updatedReviewer = this.policyService.updatePolicyReviewer(
