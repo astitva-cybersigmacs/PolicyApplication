@@ -28,45 +28,8 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     @Transactional
-    public Policy createPolicy(String policyName, String description, MultipartFile policyTemplateList, String version) {
-        Policy policy = new Policy();
-        policy.setPolicyName(policyName);
-        policy.setDescription(description);
-
-        // Create and save policy template
-        List<PolicyTemplate> templates = new ArrayList<>();
-        try {
-            PolicyTemplate template = new PolicyTemplate();
-            template.setFileName(policyTemplateList.getOriginalFilename());
-            template.setFileType(policyTemplateList.getContentType());
-            template.setFile(FileUtils.compressFile(policyTemplateList.getBytes()));
-            template.setVersion(version);
-            template.setPolicy(policy);
-            templates.add(template);
-        } catch (IOException e) {
-            throw new RuntimeException("Error processing file: " + policyTemplateList.getOriginalFilename());
-        }
-        policy.setPolicyTemplateList(templates);
-
-        // Create PolicyFiles
-        PolicyFiles policyFiles = new PolicyFiles();
-        policyFiles.setPolicyFileName(policyName + " File");
-        policyFiles.setPolicyVersion(version);
-        policyFiles.setCreatedDate(new Date());
-        policyFiles.setPolicy(policy);
-
-        List<PolicyFiles> policyFilesList = new ArrayList<>();
-        policyFilesList.add(policyFiles);
-        policy.setPolicyFilesList(policyFilesList);
-
-        // Create PolicyMembers list
-        List<PolicyMembers> policyMembersList = new ArrayList<>();
-        policy.setPolicyMembersList(policyMembersList);
-
-        // Save policy first to get the ID
-        Policy savedPolicy = this.policyRepository.save(policy);
-
-        return savedPolicy;
+    public Policy createPolicy(Policy policy) {
+        return this.policyRepository.save(policy);
     }
 
     @Transactional

@@ -23,22 +23,11 @@ public class PolicyController {
     private PolicyService policyService;
     private PolicyMembersRepository policyMembersRepository;
 
-    @PostMapping
-    public ResponseEntity<?> createPolicy(@RequestParam(name = "policyName") String policyName,
-                                          @RequestParam(name = "description") String description,
-                                          @RequestParam(name = "policyTemplate", required = false) MultipartFile policyTemplate,
-                                          @RequestParam(name = "version") String version) {
-        if (policyTemplate == null) {
-            return ResponseModel.customValidations("policyTemplateList", "policyTemplateList is not present");
-        }
 
-        // Validate file format
-        if (!FileFormats.proposalFileFormat().contains(policyTemplate.getContentType())) {
-            return ResponseModel.customValidations("fileFormat",
-                    "Unsupported file format: " + policyTemplate.getContentType());
-        }
+    @PostMapping
+    public ResponseEntity<?> createPolicy(@RequestBody Policy policy) {
         try {
-            this.policyService.createPolicy(policyName, description, policyTemplate, version); // Pass version to service
+            Policy createdPolicy = this.policyService.createPolicy(policy);
             return ResponseModel.success("Policy created successfully");
         } catch (Exception e) {
             return ResponseModel.error("Failed to create policy: " + e.getMessage());

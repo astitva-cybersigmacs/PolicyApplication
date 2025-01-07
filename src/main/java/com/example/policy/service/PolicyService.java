@@ -7,7 +7,7 @@ import java.util.List;
 
 
 public interface PolicyService {
-    Policy createPolicy(String policyName, String description, MultipartFile policyTemplateList, String version);
+    Policy createPolicy(Policy policy);
     Policy getPolicyById(Long policyId);
     Policy updatePolicyTemplate(Long policyId, MultipartFile policyTemplateList, String version);
     PolicyTemplate getPolicyTemplateById(Long templateId);
