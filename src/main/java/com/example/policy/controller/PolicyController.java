@@ -73,12 +73,12 @@ public class PolicyController {
     }
 
     @PostMapping("/members")
-    public ResponseEntity<?> addPolicyMember(
-            @RequestParam Long policyId,
-            @RequestParam Long userId,
-            @RequestParam PolicyRole role) {
+    public ResponseEntity<?> addPolicyMember(@RequestBody PolicyMemberRequestModel memberRequest) {
         try {
-            this.policyService.addPolicyMember(policyId, userId, role);
+            this.policyService.addPolicyMember(
+                    memberRequest.getPolicyId(),
+                    memberRequest.getUserId(),
+                    memberRequest.getRole());
             return ResponseModel.success("Policy member added successfully");
         } catch (Exception e) {
             return ResponseModel.error("Failed to add policy member: " + e.getMessage());
