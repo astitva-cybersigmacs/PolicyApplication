@@ -22,7 +22,6 @@ import java.util.List;
 public class PolicyController {
 
     private PolicyService policyService;
-    private PolicyMembersRepository policyMembersRepository;
 
 
     @PostMapping
@@ -87,20 +86,18 @@ public class PolicyController {
     }
 
     @PutMapping("/reviewer-decision")
-    public ResponseEntity<?> updatePolicyReviewer(
-            @RequestParam Long policyId,
-            @RequestParam Long policyFileId,
-            @RequestParam Long userId,
-            @RequestParam boolean isAccepted,
-            @RequestParam(required = false) String rejectedReason) {
-
-        if (!isAccepted && (rejectedReason == null || rejectedReason.trim().isEmpty())) {
+    public ResponseEntity<?> updatePolicyReviewer(@RequestBody PolicyReviewerRequestModel reviewerRequest) {
+        if (!reviewerRequest.isAccepted() && (reviewerRequest.getRejectedReason() == null || reviewerRequest.getRejectedReason().trim().isEmpty())) {
             return ResponseModel.customValidations("rejectedReason", "Reason is required when rejecting");
         }
 
         try {
-            PolicyApproverAndReviewer updatedReviewer = this.policyService.updatePolicyReviewer(
-                    policyId, userId, isAccepted, rejectedReason, policyFileId);
+           this.policyService.updatePolicyReviewer(
+                    reviewerRequest.getPolicyId(),
+                    reviewerRequest.getUserId(),
+                    reviewerRequest.isAccepted(),
+                    reviewerRequest.getRejectedReason(),
+                    reviewerRequest.getPolicyFileId());
             return ResponseModel.update("Policy review updated successfully");
         } catch (RuntimeException e) {
             return ResponseModel.error("Failed to update policy review: " + e.getMessage());
@@ -108,22 +105,20 @@ public class PolicyController {
     }
 
     @PutMapping("/approver-decision")
-    public ResponseEntity<?> updatePolicyApprover(
-            @RequestParam Long policyId,
-            @RequestParam Long policyFileId,
-            @RequestParam Long userId,
-            @RequestParam boolean isApproved,
-            @RequestParam(required = false) String rejectedReason) {
-
+    public ResponseEntity<?> updatePolicyApprover(@RequestBody PolicyReviewerRequestModel approverRequest) {
         try {
-            // First check if policy exists
-            Policy policy = this.policyService.getPolicyById(policyId);
+
+            Policy policy = this.policyService.getPolicyById(approverRequest.getPolicyId());
             if (policy == null) {
-                return ResponseModel.error("Policy not found with ID: " + policyId);
+                return ResponseModel.error("Policy not found with ID: " + approverRequest.getPolicyId());
             }
 
-            PolicyApproverAndReviewer updatedApprover = this.policyService.updatePolicyApprover(
-                    policyId, policyFileId, userId, isApproved, rejectedReason);
+           this.policyService.updatePolicyApprover(
+                    approverRequest.getPolicyId(),
+                    approverRequest.getPolicyFileId(),
+                    approverRequest.getUserId(),
+                    approverRequest.isApproved(),
+                    approverRequest.getRejectedReason());
             return ResponseModel.update("Policy approval updated successfully");
         } catch (RuntimeException e) {
             return ResponseModel.error("Failed to update policy approval: " + e.getMessage());
