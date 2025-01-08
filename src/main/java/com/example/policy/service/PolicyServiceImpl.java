@@ -73,87 +73,64 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     @Transactional
-    public PolicyApproverAndReviewer updatePolicyReviewer(Long policyId, Long userId, boolean isAccepted, String rejectedReason, Long policyFileId) {
+    public PolicyApproverAndReviewer updatePolicyReviewer(Long policyId, Long userId, boolean isAccepted,
+                                                          String rejectedReason, Long policyFileId) {
 
-        Policy policy = this.policyRepository.findById(policyId)
-                .orElseThrow(() -> new RuntimeException("Policy not found"));
+        Policy policy = this.policyRepository.findById(policyId).orElseThrow(() -> new RuntimeException("Policy not found"));
+        PolicyFiles policyFile = this.policyFilesRepository.findById(policyFileId).orElseThrow(() -> new RuntimeException("Policy file not found"));
 
-        PolicyFiles policyFile = this.policyFilesRepository.findById(policyFileId)
-                .orElseThrow(() -> new RuntimeException("Policy file not found"));
-
-        // Find reviewer for this specific policy file
-        List<PolicyApproverAndReviewer> reviewers = this.policyApproverAndReviewerRepository
-                .findByUserIdAndPolicy_PolicyIdAndPolicyFiles_PolicyFilesId(userId, policyId, policyFileId);
-
-
-        PolicyApproverAndReviewer reviewer = reviewers.stream()
+        // Get current reviewer
+        PolicyApproverAndReviewer reviewer = this.policyApproverAndReviewerRepository
+                .findByUserIdAndPolicy_PolicyIdAndPolicyFiles_PolicyFilesId(userId, policyId, policyFileId)
+                .stream()
                 .filter(r -> r.getRole() == PolicyRole.REVIEWER)
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Reviewer not found"));
 
+        // Check if reviewer has already made a decision
         if (reviewer.isApproved() || reviewer.getRejectedReason() != null) {
             throw new RuntimeException("Reviewer has already made a decision for this policy file.");
         }
 
+        // Update reviewer decision
         reviewer.setApproved(isAccepted);
         reviewer.setRejectedReason(rejectedReason);
 
+        // Get all reviewers and their decisions
+        List<PolicyApproverAndReviewer> allReviewers = this.policyApproverAndReviewerRepository.findByPolicyAndRoleAndPolicyFiles(policy, PolicyRole.REVIEWER, policyFile);
 
-        // Get all reviewers for this specific policy file
-        List<PolicyApproverAndReviewer> allReviewers = this.policyApproverAndReviewerRepository
-                .findByPolicyAndRoleAndPolicyFiles(policy, PolicyRole.REVIEWER, policyFile);
-
-
-        // Calculate acceptance percentage
-        long totalReviewers = allReviewers.size();
-        long approvedReviewers = allReviewers.stream()
-                .filter(PolicyApproverAndReviewer::isApproved)
-                .count();
-
-        // Check if all reviewers have made a decision
         boolean allReviewersResponded = allReviewers.stream()
                 .allMatch(r -> r.isApproved() || r.getRejectedReason() != null);
 
-
+        // Update policy file status if all reviewers have responded
         if (allReviewersResponded) {
-            // Calculate acceptance percentage
-            double acceptancePercentage = (approvedReviewers * 100.0) / totalReviewers;
+            double approvalPercentage = (allReviewers.stream()
+                    .filter(PolicyApproverAndReviewer::isApproved)
+                    .count() * 100.0) / allReviewers.size();
 
-            // Update final acceptance if majority (>50%) approved
-            boolean shouldAccept = acceptancePercentage > 50;
+            boolean shouldAccept = approvalPercentage > 50;
             policyFile.setFinalAcceptance(shouldAccept);
-
-            if (shouldAccept) {
-                policyFile.setStatus("UNDER_APPROVAL");
-            } else {
-                policyFile.setStatus("REJECTED_BY_REVIEWERS");
-            }
-           this.policyFilesRepository.save(policyFile);
-        } else {
-            System.out.println("Not all reviewers have responded yet. Waiting for all responses before updating final status.");
+            policyFile.setStatus(shouldAccept ? "UNDER_APPROVAL" : "REJECTED_BY_REVIEWERS");
+            this.policyFilesRepository.save(policyFile);
         }
-        PolicyApproverAndReviewer savedReviewer = this.policyApproverAndReviewerRepository.save(reviewer);
-        return savedReviewer;
+
+        return this.policyApproverAndReviewerRepository.save(reviewer);
     }
 
     @Override
     @Transactional
     public PolicyApproverAndReviewer updatePolicyApprover(Long policyId, Long policyFileId, Long userId,
                                                           boolean isApproved, String rejectedReason) {
-        // First validate if policy exists
+        // Validate policy and policy file existence
         Policy policy = this.policyRepository.findById(policyId)
                 .orElseThrow(() -> new RuntimeException("Policy not found with ID: " + policyId));
-
-        // Validate if policy file exists
         PolicyFiles policyFile = this.policyFilesRepository.findById(policyFileId)
                 .orElseThrow(() -> new RuntimeException("Policy file not found with ID: " + policyFileId));
 
-        // Find approver for this specific policy file
-        List<PolicyApproverAndReviewer> approvers = this.policyApproverAndReviewerRepository
-                .findByUserIdAndPolicy_PolicyIdAndPolicyFiles_PolicyFilesId(userId, policyId, policyFileId);
-
-        // Get the approver
-        PolicyApproverAndReviewer approver = approvers.stream()
+        // Retrieve approver
+        PolicyApproverAndReviewer approver = this.policyApproverAndReviewerRepository
+                .findByUserIdAndPolicy_PolicyIdAndPolicyFiles_PolicyFilesId(userId, policyId, policyFileId)
+                .stream()
                 .filter(a -> a.getRole() == PolicyRole.APPROVER)
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Approver not found"));
@@ -166,47 +143,22 @@ public class PolicyServiceImpl implements PolicyService {
         approver.setRejectedReason(rejectedReason);
         PolicyApproverAndReviewer updatedApprover = this.policyApproverAndReviewerRepository.save(approver);
 
-        // Get latest policy file
-        if (policy.getPolicyFilesList() != null && !policy.getPolicyFilesList().isEmpty()) {
-            // Only proceed if the policy has final acceptance from reviewers
-            if (policyFile.isFinalAcceptance()) {
-                // Get all approvers for this policy file
-                List<PolicyApproverAndReviewer> allApprovers = this.policyApproverAndReviewerRepository
-                        .findByPolicyAndRoleAndPolicyFiles(policy, PolicyRole.APPROVER, policyFile);
+        // Check final acceptance and update status if needed
+        if (policy.getPolicyFilesList() != null && !policy.getPolicyFilesList().isEmpty() && policyFile.isFinalAcceptance()) {
+            List<PolicyApproverAndReviewer> allApprovers = this.policyApproverAndReviewerRepository
+                    .findByPolicyAndRoleAndPolicyFiles(policy, PolicyRole.APPROVER, policyFile);
 
-                // Check if any approver has rejected
-                boolean hasRejection = allApprovers.stream()
-                        .anyMatch(a -> !a.isApproved());
+            boolean hasRejection = allApprovers.stream().anyMatch(a -> !a.isApproved());
+            boolean allResponded = allApprovers.stream().allMatch(a -> a.isApproved() || (a.getRejectedReason() != null && !a.getRejectedReason().trim().isEmpty()));
 
-                // Check if all approvers have made a decision
-                boolean allApproversResponded = allApprovers.stream()
-                        .allMatch(a -> {
-                            if (a.isApproved()) {
-                                return true; // If approved, no need to check reason
-                            } else {
-                                // If not approved, check if rejected reason exists and is not empty
-                                String reason = a.getRejectedReason();
-                                return reason != null && !reason.trim().isEmpty();
-                            }
-                        });
-
-                if (allApproversResponded) {
-                    if (hasRejection) {
-                        // If any approver rejected, mark as rejected
-                        policyFile.setFinalApproval(false);
-                        policyFile.setStatus("REJECTED");
-                    } else {
-                        // If no rejections and all approved, mark as approved
-                        policyFile.setFinalApproval(true);
-                        policyFile.setStatus("APPROVED");
-                    }
-                    this.policyFilesRepository.save(policyFile);
-                }
-            } else {
-                System.out.println("Policy file does not have final acceptance from reviewers yet");
+            if (allResponded) {
+                policyFile.setFinalApproval(!hasRejection);
+                policyFile.setStatus(hasRejection ? "REJECTED" : "APPROVED");
+                this.policyFilesRepository.save(policyFile);
             }
+        } else {
+            System.out.println("Policy file does not have final acceptance from reviewers yet");
         }
-
         return updatedApprover;
     }
 
