@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -43,33 +42,21 @@ public class PolicyServiceImpl implements PolicyService {
         policyMember.setUser(user);
         policyMember.setRole(role);
 
-        // If the role is REVIEWER, create a PolicyReviewer record
-        if (role == PolicyRole.REVIEWER) {
-            // Get the latest policy file
-            if (policy.getPolicyFilesList() != null && !policy.getPolicyFilesList().isEmpty()) {
-                PolicyFiles latestPolicyFile = policy.getPolicyFilesList()
-                        .get(policy.getPolicyFilesList().size() - 1);
-
-                PolicyApproverAndReviewer reviewer = new PolicyApproverAndReviewer();
-                reviewer.setUserId(userId);
-                reviewer.setRole(PolicyRole.REVIEWER);
-                reviewer.setPolicyFiles(latestPolicyFile);
-                this.policyApproverAndReviewerRepository.save(reviewer);
-            }
+        // If the role is REVIEWER or APPROVER, create a PolicyApproverAndReviewer record
+        if (role == PolicyRole.REVIEWER || role == PolicyRole.APPROVER) {
+            PolicyApproverAndReviewer reviewer = new PolicyApproverAndReviewer();
+            reviewer.setUserId(userId);
+            reviewer.setRole(role);
+            reviewer.setPolicy(policy);
+            reviewer.setApproved(false); // default value
+            this.policyApproverAndReviewerRepository.save(reviewer);
         }
 
-        if (role == PolicyRole.APPROVER) {
-            // Get the latest policy file
-            if (policy.getPolicyFilesList() != null && !policy.getPolicyFilesList().isEmpty()) {
-                PolicyFiles latestPolicyFile = policy.getPolicyFilesList()
-                        .get(policy.getPolicyFilesList().size() - 1);
-
-                PolicyApproverAndReviewer approver = new PolicyApproverAndReviewer();
-                approver.setUserId(userId);
-                approver.setRole(PolicyRole.APPROVER);
-                approver.setApproved(false); // default value
-                approver.setPolicyFiles(latestPolicyFile);
-                this.policyApproverAndReviewerRepository.save(approver);
+        if (role == PolicyRole.CREATOR) {
+            // Validate that there isn't already a creator for this policy
+            List<PolicyMembers> existingCreators = policyMembersRepository.findByPolicyAndRole(policy, PolicyRole.CREATOR);
+            if (!existingCreators.isEmpty()) {
+                throw new RuntimeException("Policy already has a creator assigned");
             }
         }
 
@@ -86,100 +73,138 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     @Transactional
-    public PolicyApproverAndReviewer updatePolicyReviewer(Long policyId, Long userId, boolean isAccepted, String rejectedReason) {
-        // First validate if policy exists
-        this.policyRepository.findById(policyId).orElseThrow(() -> new RuntimeException("Policy not found with ID: " + policyId));
+    public PolicyApproverAndReviewer updatePolicyReviewer(Long policyId, Long userId, boolean isAccepted, String rejectedReason, Long policyFileId) {
 
-        // Find reviewer for this user and policy
-        List<PolicyApproverAndReviewer> reviewers = this.policyApproverAndReviewerRepository.findByUserIdAndPolicyFiles_Policy_PolicyId(userId, policyId);
+        Policy policy = this.policyRepository.findById(policyId)
+                .orElseThrow(() -> new RuntimeException("Policy not found"));
 
-        // Get the most recent reviewer
-        PolicyApproverAndReviewer reviewer = reviewers.get(reviewers.size() - 1);
-        reviewer.setApproved(isAccepted);
-        reviewer.setRejectedReason(rejectedReason);
-        PolicyApproverAndReviewer updatedReviewer = this.policyApproverAndReviewerRepository.save(reviewer);
+        PolicyFiles policyFile = this.policyFilesRepository.findById(policyFileId)
+                .orElseThrow(() -> new RuntimeException("Policy file not found"));
 
-        // Update the policy files final acceptance status
-        PolicyFiles policyFiles = reviewer.getPolicyFiles();
+        // Find reviewer for this specific policy file
+        List<PolicyApproverAndReviewer> reviewers = this.policyApproverAndReviewerRepository
+                .findByUserIdAndPolicy_PolicyIdAndPolicyFiles_PolicyFilesId(userId, policyId, policyFileId);
 
-        List<PolicyApproverAndReviewer> allReviewers = this.policyApproverAndReviewerRepository
-                .findByPolicyFiles(policyFiles)
-                .stream()
+
+        PolicyApproverAndReviewer reviewer = reviewers.stream()
                 .filter(r -> r.getRole() == PolicyRole.REVIEWER)
-                .toList();
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Reviewer not found"));
 
-        if (!allReviewers.isEmpty()) {
-            long acceptedCount = allReviewers.stream()
-                    .filter(PolicyApproverAndReviewer::isApproved)
-                    .count();
-            double acceptancePercentage = (acceptedCount * 100.0) / allReviewers.size();
-            boolean shouldAccept = acceptancePercentage > 50;
-            policyFiles.setFinalAcceptance(shouldAccept);
-            this.policyFilesRepository.save(policyFiles);
+        if (reviewer.isApproved() || reviewer.getRejectedReason() != null) {
+            throw new RuntimeException("Reviewer has already made a decision for this policy file.");
         }
 
-        return updatedReviewer;
+        reviewer.setApproved(isAccepted);
+        reviewer.setRejectedReason(rejectedReason);
+
+
+        // Get all reviewers for this specific policy file
+        List<PolicyApproverAndReviewer> allReviewers = this.policyApproverAndReviewerRepository
+                .findByPolicyAndRoleAndPolicyFiles(policy, PolicyRole.REVIEWER, policyFile);
+
+
+        // Calculate acceptance percentage
+        long totalReviewers = allReviewers.size();
+        long approvedReviewers = allReviewers.stream()
+                .filter(PolicyApproverAndReviewer::isApproved)
+                .count();
+
+        // Check if all reviewers have made a decision
+        boolean allReviewersResponded = allReviewers.stream()
+                .allMatch(r -> r.isApproved() || r.getRejectedReason() != null);
+
+
+        if (allReviewersResponded) {
+            // Calculate acceptance percentage
+            double acceptancePercentage = (approvedReviewers * 100.0) / totalReviewers;
+
+            // Update final acceptance if majority (>50%) approved
+            boolean shouldAccept = acceptancePercentage > 50;
+            policyFile.setFinalAcceptance(shouldAccept);
+
+            if (shouldAccept) {
+                policyFile.setStatus("UNDER_APPROVAL");
+            } else {
+                policyFile.setStatus("REJECTED_BY_REVIEWERS");
+            }
+           this.policyFilesRepository.save(policyFile);
+        } else {
+            System.out.println("Not all reviewers have responded yet. Waiting for all responses before updating final status.");
+        }
+        PolicyApproverAndReviewer savedReviewer = this.policyApproverAndReviewerRepository.save(reviewer);
+        return savedReviewer;
     }
 
     @Override
     @Transactional
-    public PolicyApproverAndReviewer updatePolicyApprover(Long policyId, Long userId, boolean isApproved, String rejectedReason) {
+    public PolicyApproverAndReviewer updatePolicyApprover(Long policyId, Long policyFileId, Long userId,
+                                                          boolean isApproved, String rejectedReason) {
         // First validate if policy exists
-        this.policyRepository.findById(policyId).orElseThrow(() -> new RuntimeException("Policy not found with ID: " + policyId));
+        Policy policy = this.policyRepository.findById(policyId)
+                .orElseThrow(() -> new RuntimeException("Policy not found with ID: " + policyId));
 
-        // Find approvers for this user and policy
+        // Validate if policy file exists
+        PolicyFiles policyFile = this.policyFilesRepository.findById(policyFileId)
+                .orElseThrow(() -> new RuntimeException("Policy file not found with ID: " + policyFileId));
+
+        // Find approver for this specific policy file
         List<PolicyApproverAndReviewer> approvers = this.policyApproverAndReviewerRepository
-                .findByUserIdAndPolicyFiles_Policy_PolicyId(userId, policyId);
+                .findByUserIdAndPolicy_PolicyIdAndPolicyFiles_PolicyFilesId(userId, policyId, policyFileId);
 
-        // Get the most recent approver
-        PolicyApproverAndReviewer approver = approvers.get(approvers.size() - 1);
+        // Get the approver
+        PolicyApproverAndReviewer approver = approvers.stream()
+                .filter(a -> a.getRole() == PolicyRole.APPROVER)
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Approver not found"));
+
+        if (approver.isApproved() || approver.getRejectedReason() != null) {
+            throw new RuntimeException("Approver has already made a decision for this policy file.");
+        }
+
         approver.setApproved(isApproved);
         approver.setRejectedReason(rejectedReason);
         PolicyApproverAndReviewer updatedApprover = this.policyApproverAndReviewerRepository.save(approver);
 
-        // Update the policy files final approval status
-        PolicyFiles policyFiles = approver.getPolicyFiles();
+        // Get latest policy file
+        if (policy.getPolicyFilesList() != null && !policy.getPolicyFilesList().isEmpty()) {
+            // Only proceed if the policy has final acceptance from reviewers
+            if (policyFile.isFinalAcceptance()) {
+                // Get all approvers for this policy file
+                List<PolicyApproverAndReviewer> allApprovers = this.policyApproverAndReviewerRepository
+                        .findByPolicyAndRoleAndPolicyFiles(policy, PolicyRole.APPROVER, policyFile);
 
-        // Only proceed if the policy has final acceptance from reviewers
-        if (policyFiles.isFinalAcceptance()) {
-            // Get all approvers for this policy file
-            List<PolicyApproverAndReviewer> allApprovers = this.policyApproverAndReviewerRepository
-                    .findByPolicyFiles(policyFiles)
-                    .stream()
-                    .filter(a -> a.getRole() == PolicyRole.APPROVER)
-                    .toList();
+                // Check if any approver has rejected
+                boolean hasRejection = allApprovers.stream()
+                        .anyMatch(a -> !a.isApproved());
 
-            // Check if any approver has rejected
-            boolean hasRejection = allApprovers.stream()
-                    .anyMatch(a -> !a.isApproved());
+                // Check if all approvers have made a decision
+                boolean allApproversResponded = allApprovers.stream()
+                        .allMatch(a -> {
+                            if (a.isApproved()) {
+                                return true; // If approved, no need to check reason
+                            } else {
+                                // If not approved, check if rejected reason exists and is not empty
+                                String reason = a.getRejectedReason();
+                                return reason != null && !reason.trim().isEmpty();
+                            }
+                        });
 
-            // Check if all approvers have made a decision
-            // Changed this part to handle null rejectedReason
-            boolean allApproversResponded = allApprovers.stream()
-                    .allMatch(a -> {
-                        if (a.isApproved()) {
-                            return true; // If approved, no need to check reason
-                        } else {
-                            // If not approved, check if rejected reason exists and is not empty
-                            String reason = a.getRejectedReason();
-                            return reason != null && !reason.trim().isEmpty();
-                        }
-                    });
-
-            if (allApproversResponded) {
-                if (hasRejection) {
-                    // If any approver rejected, mark as rejected
-                    policyFiles.setFinalApproval(false);
-                    policyFiles.setStatus("REJECTED");
-                } else {
-                    // If no rejections and all approved, mark as approved
-                    policyFiles.setFinalApproval(true);
-                    policyFiles.setStatus("APPROVED");
+                if (allApproversResponded) {
+                    if (hasRejection) {
+                        // If any approver rejected, mark as rejected
+                        policyFile.setFinalApproval(false);
+                        policyFile.setStatus("REJECTED");
+                    } else {
+                        // If no rejections and all approved, mark as approved
+                        policyFile.setFinalApproval(true);
+                        policyFile.setStatus("APPROVED");
+                    }
+                    this.policyFilesRepository.save(policyFile);
                 }
-                this.policyFilesRepository.save(policyFiles);
+            } else {
+                System.out.println("Policy file does not have final acceptance from reviewers yet");
             }
-        } else {
-            System.out.println("Policy does not have final acceptance from reviewers yet");
         }
 
         return updatedApprover;
@@ -232,6 +257,12 @@ public class PolicyServiceImpl implements PolicyService {
         Policy policy = this.policyRepository.findById(policyId)
                 .orElseThrow(() -> new RuntimeException("Policy not found with id: " + policyId));
 
+        // Check if the user is a CREATOR
+        List<PolicyMembers> creators = this.policyMembersRepository.findByPolicyAndRole(policy, PolicyRole.CREATOR);
+        if (creators.isEmpty()) {
+            throw new RuntimeException("No CREATOR found for this policy");
+        }
+
         try {
             PolicyFiles policyFile = new PolicyFiles();
             policyFile.setPolicy(policy);
@@ -250,19 +281,62 @@ public class PolicyServiceImpl implements PolicyService {
             policyFile.setFinalAcceptance(false);
             policyFile.setFinalApproval(false);
 
-            // Add to policy's files list
-            if (policy.getPolicyFilesList() == null) {
-                policy.setPolicyFilesList(new ArrayList<>());
-            }
             policy.getPolicyFilesList().add(policyFile);
 
             // Save the policy file
-            return this.policyFilesRepository.save(policyFile);
+            PolicyFiles savedPolicyFile = this.policyFilesRepository.save(policyFile);
+
+            // Get all existing reviewers for the policy
+            List<PolicyApproverAndReviewer> existingReviewers =
+                    policyApproverAndReviewerRepository.findByPolicyAndRole(policy, PolicyRole.REVIEWER);
+
+            // Get all existing approvers for the policy
+            List<PolicyApproverAndReviewer> existingApprovers =
+                    policyApproverAndReviewerRepository.findByPolicyAndRole(policy, PolicyRole.APPROVER);
+
+            // Create new reviewer records for the new policy file only if they don't already exist
+            for (PolicyApproverAndReviewer existing : existingReviewers) {
+                // Check if the reviewer already exists for the new policy file
+                boolean exists = policyApproverAndReviewerRepository.existsByPolicyAndPolicyFilesAndUserIdAndRole(
+                        policy, savedPolicyFile, existing.getUserId(), PolicyRole.REVIEWER);
+
+                if (!exists) {
+                    PolicyApproverAndReviewer newRecord = new PolicyApproverAndReviewer();
+                    newRecord.setUserId(existing.getUserId());
+                    newRecord.setRole(PolicyRole.REVIEWER);
+                    newRecord.setPolicy(policy);
+                    newRecord.setPolicyFiles(savedPolicyFile);
+                    newRecord.setApproved(false);
+                    newRecord.setRejectedReason(null);
+                    policyApproverAndReviewerRepository.save(newRecord);
+                }
+            }
+
+            // Create new approver records for the new policy file only if they don't already exist
+            for (PolicyApproverAndReviewer existing : existingApprovers) {
+                // Check if the approver already exists for the new policy file
+                boolean exists = policyApproverAndReviewerRepository.existsByPolicyAndPolicyFilesAndUserIdAndRole(
+                        policy, savedPolicyFile, existing.getUserId(), PolicyRole.APPROVER);
+
+                if (!exists) {
+                    PolicyApproverAndReviewer newRecord = new PolicyApproverAndReviewer();
+                    newRecord.setUserId(existing.getUserId());
+                    newRecord.setRole(PolicyRole.APPROVER);
+                    newRecord.setPolicy(policy);
+                    newRecord.setPolicyFiles(savedPolicyFile);
+                    newRecord.setApproved(false);
+                    newRecord.setRejectedReason(null);
+                    policyApproverAndReviewerRepository.save(newRecord);
+                }
+            }
+
+            return savedPolicyFile;
 
         } catch (IOException e) {
             throw new RuntimeException("Error processing file: " + file.getOriginalFilename(), e);
         }
     }
+
 
     @Override
     public PolicyFiles getPolicyFilesById(Long policyFilesId) {

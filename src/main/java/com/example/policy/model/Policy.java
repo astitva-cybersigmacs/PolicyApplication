@@ -31,5 +31,8 @@ public class Policy {
     @OneToMany(mappedBy = "policy", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PolicyMembers> policyMembersList;
 
+    @OneToMany(mappedBy = "policy", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PolicyApproverAndReviewer> policyApproverAndReviewerList;
+
 
 }

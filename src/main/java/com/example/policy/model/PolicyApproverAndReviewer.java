@@ -29,6 +29,11 @@ public class PolicyApproverAndReviewer {
 
 
     @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "policy_id")
+    @JsonIgnore
+    private Policy policy;
+
+    @ManyToOne
     @JoinColumn(name = "policy_files_id")
     @JsonIgnore
     private PolicyFiles policyFiles;

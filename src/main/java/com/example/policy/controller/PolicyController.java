@@ -89,6 +89,7 @@ public class PolicyController {
     @PutMapping("/reviewer-decision")
     public ResponseEntity<?> updatePolicyReviewer(
             @RequestParam Long policyId,
+            @RequestParam Long policyFileId,
             @RequestParam Long userId,
             @RequestParam boolean isAccepted,
             @RequestParam(required = false) String rejectedReason) {
@@ -98,15 +99,9 @@ public class PolicyController {
         }
 
         try {
-            // First check if policy exists
-            Policy policy = this.policyService.getPolicyById(policyId);
-            if (policy == null) {
-                return ResponseModel.error("Policy not found with ID: " + policyId);
-            }
-
             PolicyApproverAndReviewer updatedReviewer = this.policyService.updatePolicyReviewer(
-                    policyId, userId, isAccepted, rejectedReason);
-            return ResponseModel.success("Policy review updated successfully", updatedReviewer);
+                    policyId, userId, isAccepted, rejectedReason, policyFileId);
+            return ResponseModel.update("Policy review updated successfully");
         } catch (RuntimeException e) {
             return ResponseModel.error("Failed to update policy review: " + e.getMessage());
         }
@@ -115,24 +110,21 @@ public class PolicyController {
     @PutMapping("/approver-decision")
     public ResponseEntity<?> updatePolicyApprover(
             @RequestParam Long policyId,
+            @RequestParam Long policyFileId,
             @RequestParam Long userId,
             @RequestParam boolean isApproved,
             @RequestParam(required = false) String rejectedReason) {
 
-        if (!isApproved && (rejectedReason == null || rejectedReason.trim().isEmpty())) {
-            return ResponseModel.customValidations("rejectedReason", "Reason is required when rejecting");
-        }
-
         try {
             // First check if policy exists
-            Policy policy = policyService.getPolicyById(policyId);
+            Policy policy = this.policyService.getPolicyById(policyId);
             if (policy == null) {
                 return ResponseModel.error("Policy not found with ID: " + policyId);
             }
 
             PolicyApproverAndReviewer updatedApprover = this.policyService.updatePolicyApprover(
-                    policyId, userId, isApproved, rejectedReason);
-            return ResponseModel.success("Policy approval updated successfully", updatedApprover);
+                    policyId, policyFileId, userId, isApproved, rejectedReason);
+            return ResponseModel.update("Policy approval updated successfully");
         } catch (RuntimeException e) {
             return ResponseModel.error("Failed to update policy approval: " + e.getMessage());
         }
