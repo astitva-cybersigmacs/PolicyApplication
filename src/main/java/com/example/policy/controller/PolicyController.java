@@ -1,14 +1,11 @@
 package com.example.policy.controller;
 
 import com.example.policy.model.*;
-import com.example.policy.repository.PolicyMembersRepository;
 import com.example.policy.service.PolicyService;
 import com.example.policy.utils.FileFormats;
 import com.example.policy.utils.ResponseModel;
 import lombok.AllArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,7 +26,7 @@ public class PolicyController {
     @PostMapping
     public ResponseEntity<?> createPolicy(@RequestBody Policy policy) {
         try {
-            Policy createdPolicy = this.policyService.createPolicy(policy);
+            this.policyService.createPolicy(policy);
             return ResponseModel.success("Policy created successfully");
         } catch (Exception e) {
             return ResponseModel.error("Failed to create policy: " + e.getMessage());
@@ -203,7 +200,7 @@ public class PolicyController {
             if (policyFile == null) {
                 return ResponseModel.notFound("Policy file not found");
             }
-// Retrieve the file content from the service
+
            this.policyService.getPolicyFileContent(policyFilesId);
 
             return ResponseModel.sendMediaWithDecompress(
