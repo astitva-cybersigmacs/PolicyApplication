@@ -11,10 +11,6 @@ import java.util.List;
 
 @Repository
 public interface PolicyApproverAndReviewerRepository extends JpaRepository<PolicyApproverAndReviewer, Long> {
-    List<PolicyApproverAndReviewer> findByUserIdAndPolicy_PolicyId(Long userId, Long policyId);
-
-    List<PolicyApproverAndReviewer> findByPolicy(Policy policy);
-
     List<PolicyApproverAndReviewer> findByPolicyAndRole(Policy policy, PolicyRole role);
 
     List<PolicyApproverAndReviewer> findByUserIdAndPolicy_PolicyIdAndPolicyFiles_PolicyFilesId(Long userId, Long policyId, Long policyFileId);
