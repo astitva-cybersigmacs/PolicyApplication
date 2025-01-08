@@ -342,4 +342,12 @@ public class PolicyServiceImpl implements PolicyService {
     public PolicyFiles getPolicyFilesById(Long policyFilesId) {
         return this.policyFilesRepository.findById(policyFilesId).orElse(null);
     }
+
+    @Override
+    public byte[] getPolicyFileContent(Long policyFilesId) {
+        PolicyFiles policyFile = this.policyFilesRepository.findById(policyFilesId)
+                .orElseThrow(() -> new RuntimeException("Policy file not found"));
+
+        return FileUtils.decompressFile(policyFile.getFile());
+    }
 }

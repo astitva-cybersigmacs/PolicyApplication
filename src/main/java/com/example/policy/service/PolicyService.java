@@ -17,4 +17,5 @@ public interface PolicyService {
     PolicyFiles updatePolicyFiles(Long policyId, Long policyFileId, MultipartFile file, String version, String status, Date effectiveEndDate);
     PolicyFiles addPolicyFile(Long policyId, MultipartFile file, String version, String status, Date createdDate, Date effectiveStartDate, Date effectiveEndDate);
     PolicyFiles getPolicyFilesById(Long policyFilesId);
+    byte[] getPolicyFileContent(Long policyFilesId);
 }

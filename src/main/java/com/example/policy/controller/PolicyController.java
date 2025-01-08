@@ -7,6 +7,8 @@ import com.example.policy.utils.FileFormats;
 import com.example.policy.utils.ResponseModel;
 import lombok.AllArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -191,6 +193,26 @@ public class PolicyController {
             return ResponseModel.success("Policy response model retrieved successfully", responseModel);
         } catch (Exception e) {
             return ResponseModel.error("Failed to retrieve policy response model: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/download/{policyFilesId}")
+    public ResponseEntity<?> downloadPolicyFile(@PathVariable Long policyFilesId) {
+        try {
+            PolicyFiles policyFile = this.policyService.getPolicyFilesById(policyFilesId);
+            if (policyFile == null) {
+                return ResponseModel.notFound("Policy file not found");
+            }
+// Retrieve the file content from the service
+           this.policyService.getPolicyFileContent(policyFilesId);
+
+            return ResponseModel.sendMediaWithDecompress(
+                    policyFile.getFile(),
+                    policyFile.getFileType()
+            );
+
+        } catch (Exception e) {
+            return ResponseModel.error("Failed to download policy file: " + e.getMessage());
         }
     }
 }
